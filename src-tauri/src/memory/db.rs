@@ -46,6 +46,9 @@ pub struct Database {
 
 impl Database {
     pub fn new(db_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        if let Some(parent) = std::path::Path::new(db_path).parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         let conn = Connection::open(db_path)?;
         let db = Self { conn: Mutex::new(conn) };
         db.init_tables()?;
