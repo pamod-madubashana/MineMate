@@ -40,6 +40,8 @@ export default function ConfigPanel() {
     setSaving(true);
     try {
       await saveConfig(config);
+      // Emit event so TopNavBar reloads config
+      window.dispatchEvent(new CustomEvent("config-saved"));
     } catch (e) {
       console.error("Failed to save config:", e);
     }

@@ -1,15 +1,64 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useBot, useConfig } from "../../hooks/useTauri";
 
 export default function TopNavBar() {
   const [connected, setConnected] = useState(false);
   const [server, setServer] = useState("localhost:25565");
+  const { startBot, stopBot, getConnectionStatus } = useBot();
+  const { getConfig } = useConfig();
+
+  const loadConfig = useCallback(async () => {
+    try {
+      const config = await getConfig();
+      setServer(`${config.server.address}:${config.server.port}`);
+    } catch (e) {
+      console.error("Failed to load config:", e);
+    }
+  }, [getConfig]);
+
+  const checkStatus = useCallback(async () => {
+    try {
+      const status = await getConnectionStatus();
+      setConnected(status);
+    } catch (e) {
+      console.error("Failed to get status:", e);
+    }
+  }, [getConnectionStatus]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      // TODO: Get real status from Tauri backend
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    loadConfig();
+    checkStatus();
+    const interval = setInterval(checkStatus, 5000);
+
+    // Listen for config changes
+    const handleConfigSaved = () => loadConfig();
+    window.addEventListener("config-saved", handleConfigSaved);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("config-saved", handleConfigSaved);
+    };
+  }, [loadConfig, checkStatus]);
+
+  const handlePowerToggle = async () => {
+    if (connected) {
+      try {
+        await stopBot();
+        setConnected(false);
+      } catch (e) {
+        console.error("Failed to stop bot:", e);
+      }
+    } else {
+      try {
+        const config = await getConfig();
+        const serverAddr = `${config.server.address}:${config.server.port}`;
+        await startBot(serverAddr, config.bot.username);
+        setConnected(true);
+      } catch (e) {
+        console.error("Failed to start bot:", e);
+      }
+    }
+  };
 
   return (
     <header className="top-nav">
@@ -35,12 +84,14 @@ export default function TopNavBar() {
           </span>
         </div>
 
-        <button className="mc-button" style={{ padding: "4px 8px" }}>
-          <span className="material-symbols-outlined">settings</span>
-        </button>
-
-        <button className="mc-button" style={{ padding: "4px 8px" }}>
-          <span className="material-symbols-outlined">power_settings_new</span>
+        <button
+          className="mc-button"
+          style={{ padding: "4px 8px" }}
+          onClick={handlePowerToggle}
+        >
+          <span className="material-symbols-outlined" style={{ color: connected ? "var(--mc-red)" : "var(--mc-green)" }}>
+            power_settings_new
+          </span>
         </button>
       </div>
     </header>

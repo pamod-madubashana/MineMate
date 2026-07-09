@@ -10,15 +10,6 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .setup(|app| {
-            let app_handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = bot::start_bot_loop(app_handle).await {
-                    tracing::error!("Bot loop error: {}", e);
-                }
-            });
-            Ok(())
-        })
         .invoke_handler(tauri::generate_handler![
             commands::bot::start_bot,
             commands::bot::stop_bot,

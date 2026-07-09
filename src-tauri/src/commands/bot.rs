@@ -1,9 +1,9 @@
 use crate::bot::events::BotStatus;
-use crate::bot::handler::connect_to_server;
-use crate::bot::handler::BOT_CLIENT;
+use crate::bot::handler::{BOT_CLIENT, BOT_RUNNING};
 use crate::config::AppConfig;
 use crate::executor::audit::get_audit_logger;
 use crate::executor::security::SecurityValidator;
+use azalea::prelude::*;
 
 #[tauri::command]
 pub async fn start_bot(server: String, username: String) -> Result<(), String> {
@@ -18,10 +18,55 @@ pub async fn start_bot(server: String, username: String) -> Result<(), String> {
         &format!("Connecting to {}", server),
     );
 
-    connect_to_server(&server, &username).await.map_err(|e| {
-        get_audit_logger().log_failure("start_bot", Some(&username), &e.to_string());
-        format!("Failed to connect: {}", e)
-    })?;
+    {
+        let mut running = BOT_RUNNING.write();
+        *running = true;
+    }
+
+    let address = server.clone();
+    let uname = username.clone();
+
+    // Spawn Azalea connection in a blocking task
+    tokio::task::spawn_blocking(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async move {
+            tracing::info!("Connecting to {} as {}", address, uname);
+
+            let account = Account::offline(&uname);
+
+            match ClientBuilder::default()
+                .start(account, address.as_str())
+                .await
+            {
+                AppExit::Success => {
+                    tracing::info!("Connected to {} as {}", address, uname);
+
+                    if let Some(bot) = BOT_CLIENT.read().as_ref() {
+                        bot.set_connected(true);
+                        let _ = bot.event_tx.send(crate::bot::events::BotEvent::BotStarted);
+                    }
+
+                    // Keep thread alive while bot is running
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                        if !*BOT_RUNNING.read() {
+                            tracing::info!("Bot stop requested");
+                            break;
+                        }
+                    }
+                }
+                AppExit::Error(e) => {
+                    tracing::error!("Failed to connect to {}: {}", address, e);
+                    if let Some(bot) = BOT_CLIENT.read().as_ref() {
+                        bot.set_connected(false);
+                        let _ = bot.event_tx.send(crate::bot::events::BotEvent::Disconnected {
+                            reason: e.to_string(),
+                        });
+                    }
+                }
+            }
+        });
+    });
 
     Ok(())
 }
@@ -30,13 +75,21 @@ pub async fn start_bot(server: String, username: String) -> Result<(), String> {
 pub async fn stop_bot() -> Result<(), String> {
     tracing::info!("Stopping bot");
 
-    get_audit_logger().log_success("stop_bot", None, "Bot stopped");
-
-    let bot = BOT_CLIENT.read();
-    if let Some(client) = bot.as_ref() {
-        client.set_connected(false);
-        client.emit_event(crate::bot::events::BotEvent::BotStopped);
+    {
+        let mut running = BOT_RUNNING.write();
+        *running = false;
     }
+
+    {
+        let mut bot = BOT_CLIENT.write();
+        if let Some(client) = bot.as_ref() {
+            client.set_connected(false);
+            let _ = client.event_tx.send(crate::bot::events::BotEvent::BotStopped);
+        }
+        *bot = None;
+    }
+
+    get_audit_logger().log_success("stop_bot", None, "Bot stopped");
 
     Ok(())
 }
