@@ -8,6 +8,7 @@ pub struct BotClient {
     pub status: Arc<RwLock<BotStatus>>,
     pub event_tx: broadcast::Sender<BotEvent>,
     pub config: Arc<RwLock<AppConfig>>,
+    pub connected: Arc<RwLock<bool>>,
 }
 
 impl BotClient {
@@ -17,11 +18,16 @@ impl BotClient {
             status: Arc::new(RwLock::new(BotStatus::default())),
             event_tx,
             config: Arc::new(RwLock::new(config)),
+            connected: Arc::new(RwLock::new(false)),
         }
     }
 
     pub fn get_status(&self) -> BotStatus {
         self.status.read().clone()
+    }
+
+    pub fn is_connected(&self) -> bool {
+        *self.connected.read()
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<BotEvent> {
@@ -30,5 +36,13 @@ impl BotClient {
 
     pub fn emit_event(&self, event: BotEvent) {
         let _ = self.event_tx.send(event);
+    }
+
+    pub fn set_connected(&self, connected: bool) {
+        *self.connected.write() = connected;
+    }
+
+    pub fn update_status(&self, status: BotStatus) {
+        *self.status.write() = status;
     }
 }
