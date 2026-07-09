@@ -36,6 +36,18 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                 });
             }
         }
+        azalea::Event::Death(reason) => {
+            let msg = reason
+                .as_ref()
+                .map(|r| r.message.to_string())
+                .unwrap_or_default();
+            tracing::warn!("Bot died: {}", msg);
+            if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.emit_event(BotEvent::Disconnected {
+                    reason: format!("Bot died: {}", msg),
+                });
+            }
+        }
         azalea::Event::Tick => {
             if !*BOT_RUNNING.read() {
                 tracing::info!("Bot stop requested, exiting...");

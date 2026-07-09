@@ -28,7 +28,7 @@ export default function ConfigPanel() {
     if (!config) return;
     const newConfig = { ...config };
     const keys: (keyof AppConfig["automation"])[] = [
-      "auto_sleep", "auto_eat", "auto_reconnect", "welcome_messages", "starter_kit_on_respawn"
+      "auto_sleep", "auto_eat", "auto_respawn", "auto_reconnect", "welcome_messages", "starter_kit_on_respawn"
     ];
     const key = keys[index];
     newConfig.automation[key] = !newConfig.automation[key];
@@ -55,6 +55,7 @@ export default function ConfigPanel() {
   const toggles = [
     { label: "Auto Sleep", key: "auto_sleep" as keyof AppConfig["automation"], enabled: config.automation.auto_sleep },
     { label: "Auto Eat", key: "auto_eat" as keyof AppConfig["automation"], enabled: config.automation.auto_eat },
+    { label: "Auto Respawn", key: "auto_respawn" as keyof AppConfig["automation"], enabled: config.automation.auto_respawn },
     { label: "Auto Reconnect", key: "auto_reconnect" as keyof AppConfig["automation"], enabled: config.automation.auto_reconnect },
     { label: "Welcome Messages", key: "welcome_messages" as keyof AppConfig["automation"], enabled: config.automation.welcome_messages },
     { label: "Starter Kit on Respawn", key: "starter_kit_on_respawn" as keyof AppConfig["automation"], enabled: config.automation.starter_kit_on_respawn },
