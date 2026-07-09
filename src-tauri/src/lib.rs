@@ -6,7 +6,7 @@ mod executor;
 mod memory;
 
 pub fn run() {
-    tracing_subscriber::fmt::init();
+    let _ = tracing_subscriber::fmt().try_init();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())

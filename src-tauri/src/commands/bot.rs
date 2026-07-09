@@ -1,10 +1,47 @@
 use crate::bot::client::BotClient;
+use crate::bot::events::BotEvent;
 use crate::bot::events::BotStatus;
 use crate::bot::handler::{BOT_CLIENT, BOT_RUNNING};
 use crate::config::AppConfig;
 use crate::executor::audit::get_audit_logger;
 use crate::executor::security::SecurityValidator;
 use azalea::prelude::*;
+
+async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
+    match event {
+        azalea::Event::Spawn => {
+            tracing::info!("Bot spawned in world");
+            if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.set_connected(true);
+                let _ = b.event_tx.send(BotEvent::BotStarted);
+            }
+        }
+        azalea::Event::Disconnect(reason) => {
+            tracing::warn!("Bot disconnected: {:?}", reason);
+            if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.set_connected(false);
+                let _ = b.event_tx.send(BotEvent::Disconnected {
+                    reason: format!("{:?}", reason),
+                });
+            }
+        }
+        azalea::Event::Chat(chat) => {
+            if let Some(b) = BOT_CLIENT.read().as_ref() {
+                let _ = b.event_tx.send(BotEvent::ChatMessage {
+                    player: chat.sender().unwrap_or_default(),
+                    message: chat.content(),
+                });
+            }
+        }
+        azalea::Event::Tick => {
+            if !*BOT_RUNNING.read() {
+                tracing::info!("Bot stop requested, exiting...");
+                bot.exit();
+            }
+        }
+        _ => {}
+    }
+}
 
 #[tauri::command]
 pub async fn start_bot(server: String, username: String) -> Result<(), String> {
@@ -42,68 +79,16 @@ pub async fn start_bot(server: String, username: String) -> Result<(), String> {
 
             let account = Account::offline(&uname);
 
-            match Client::join(account, address.as_str()).await {
-                Ok((bot_handle, mut event_rx)) => {
-                    tracing::info!("Connected to {} as {}", address, uname);
+            let exit = ClientBuilder::new()
+                .set_handler(azalea_handler)
+                .start(account, address.as_str())
+                .await;
 
-                    if let Some(bot) = BOT_CLIENT.read().as_ref() {
-                        bot.set_connected(true);
-                        let _ = bot.event_tx.send(crate::bot::events::BotEvent::BotStarted);
-                    }
+            tracing::info!("Bot exited with: {:?}", exit);
 
-                    // Process events and monitor stop signal
-                    loop {
-                        tokio::select! {
-                            Some(event) = event_rx.recv() => {
-                                match event {
-                                    azalea::Event::Spawn => {
-                                        tracing::debug!("Bot spawned in world");
-                                    }
-                                    azalea::Event::Disconnect(reason) => {
-                                        tracing::warn!("Bot disconnected: {:?}", reason);
-                                        if let Some(bot) = BOT_CLIENT.read().as_ref() {
-                                            bot.set_connected(false);
-                                            let _ = bot.event_tx.send(crate::bot::events::BotEvent::Disconnected {
-                                                reason: format!("{:?}", reason),
-                                            });
-                                        }
-                                        break;
-                                    }
-                                    azalea::Event::Chat(chat) => {
-                                        if let Some(bot) = BOT_CLIENT.read().as_ref() {
-                                            let _ = bot.event_tx.send(crate::bot::events::BotEvent::ChatMessage {
-                                                player: chat.sender().unwrap_or_default(),
-                                                message: chat.content().to_string(),
-                                            });
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                            }
-                            _ = tokio::time::sleep(std::time::Duration::from_millis(500)) => {
-                                if !*BOT_RUNNING.read() {
-                                    tracing::info!("Bot stop requested, disconnecting...");
-                                    bot_handle.exit();
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if let Some(bot) = BOT_CLIENT.read().as_ref() {
-                        bot.set_connected(false);
-                        let _ = bot.event_tx.send(crate::bot::events::BotEvent::BotStopped);
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("Failed to connect to {}: {}", address, e);
-                    if let Some(bot) = BOT_CLIENT.read().as_ref() {
-                        bot.set_connected(false);
-                        let _ = bot.event_tx.send(crate::bot::events::BotEvent::Disconnected {
-                            reason: e.to_string(),
-                        });
-                    }
-                }
+            if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.set_connected(false);
+                let _ = b.event_tx.send(BotEvent::BotStopped);
             }
         });
     });
@@ -124,7 +109,7 @@ pub async fn stop_bot() -> Result<(), String> {
         let mut bot = BOT_CLIENT.write();
         if let Some(client) = bot.as_ref() {
             client.set_connected(false);
-            let _ = client.event_tx.send(crate::bot::events::BotEvent::BotStopped);
+            let _ = client.event_tx.send(BotEvent::BotStopped);
         }
         *bot = None;
     }
@@ -157,7 +142,7 @@ pub async fn send_chat(message: String) -> Result<(), String> {
 
     let bot = BOT_CLIENT.read();
     if let Some(client) = bot.as_ref() {
-        client.emit_event(crate::bot::events::BotEvent::ChatMessage {
+        client.emit_event(BotEvent::ChatMessage {
             player: "Bot".to_string(),
             message: message.clone(),
         });
