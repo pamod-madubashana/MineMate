@@ -44,7 +44,6 @@ export default function TopNavBar() {
     if (connected) {
       try {
         await stopBot();
-        setConnected(false);
       } catch (e) {
         console.error("Failed to stop bot:", e);
       }
@@ -53,7 +52,6 @@ export default function TopNavBar() {
         const config = await getConfig();
         const serverAddr = `${config.server.address}:${config.server.port}`;
         await startBot(serverAddr, config.bot.username);
-        setConnected(true);
       } catch (e) {
         console.error("Failed to start bot:", e);
       }
