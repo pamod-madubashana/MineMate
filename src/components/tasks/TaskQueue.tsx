@@ -5,7 +5,7 @@ interface Task {
   name: string;
   type: string;
   progress: number;
-  status: "running" | "completed" | "failed";
+  status: "running" | "completed" | "failed" | "queued";
 }
 
 export default function TaskQueue() {
@@ -17,13 +17,35 @@ export default function TaskQueue() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTasks(prev => prev.map(t => ({
-        ...t,
-        progress: t.status === "running" ? Math.min(t.progress + 0.1, 100) : t.progress
-      })));
+      setTasks((prev) =>
+        prev.map((t) => ({
+          ...t,
+          progress: t.status === "running" ? Math.min(t.progress + 0.1, 100) : t.progress,
+        }))
+      );
     }, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  const addTask = () => {
+    const newTask: Task = {
+      id: String(tasks.length + 1),
+      name: `New Task ${tasks.length + 1}`,
+      type: "Mining",
+      progress: 0,
+      status: "queued",
+    };
+    setTasks([...tasks, newTask]);
+  };
+
+  const removeTask = (id: string) => {
+    setTasks(tasks.filter((t) => t.id !== id));
+  };
+
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((t) => t.status === "completed").length;
+  const failedTasks = tasks.filter((t) => t.status === "failed").length;
+  const avgLatency = 12;
 
   return (
     <div>
@@ -33,7 +55,7 @@ export default function TaskQueue() {
 
       <p style={{ color: "var(--mc-gray)", marginBottom: "16px" }}>Manage bot operations and automation tasks</p>
 
-      <button className="mc-button mc-button-primary" style={{ marginBottom: "16px" }}>
+      <button className="mc-button mc-button-primary" style={{ marginBottom: "16px" }} onClick={addTask}>
         <span className="material-symbols-outlined" style={{ marginRight: "8px" }}>add</span>
         ADD TASK
       </button>
@@ -41,10 +63,10 @@ export default function TaskQueue() {
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
         {[
-          { label: "TASKS_TOTAL", value: "12", color: "var(--on-surface)" },
-          { label: "COMPLETED", value: "48", color: "var(--mc-green)" },
-          { label: "FAILED", value: "03", color: "var(--mc-red)" },
-          { label: "AVG_LATENCY", value: "12ms", color: "var(--on-surface)" },
+          { label: "TASKS_TOTAL", value: String(totalTasks), color: "var(--on-surface)" },
+          { label: "COMPLETED", value: String(completedTasks), color: "var(--mc-green)" },
+          { label: "FAILED", value: String(failedTasks), color: "var(--mc-red)" },
+          { label: "AVG_LATENCY", value: `${avgLatency}ms`, color: "var(--on-surface)" },
         ].map((stat, i) => (
           <div key={i} className="mc-bevel-in" style={{ padding: "12px", borderLeft: `4px solid ${stat.color}` }}>
             <div className="font-pixel" style={{ fontSize: "12px", color: "var(--mc-gray)" }}>{stat.label}</div>
@@ -56,16 +78,24 @@ export default function TaskQueue() {
       {/* Task Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "16px" }}>
         {tasks.map((task) => (
-          <div key={task.id} className="mc-slot" style={{ padding: "16px" }}>
+          <div key={task.id} className="mc-slot" style={{ padding: "16px", position: "relative" }}>
+            <button
+              className="mc-button"
+              style={{ position: "absolute", top: "8px", right: "8px", padding: "2px 6px", fontSize: "10px" }}
+              onClick={() => removeTask(task.id)}
+            >
+              ×
+            </button>
+
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-              <span className="material-symbols-outlined" style={{ color: task.status === "failed" ? "var(--mc-red)" : "var(--mc-green)" }}>
-                {task.type === "Mining" ? "terrain" : task.type === "Farming" ? "agriculture" : "warning"}
+              <span className="material-symbols-outlined" style={{ color: task.status === "failed" ? "var(--mc-red)" : task.status === "completed" ? "var(--mc-green)" : "var(--mc-yellow)" }}>
+                {task.type === "Mining" ? "terrain" : task.type === "Farming" ? "agriculture" : task.type === "Combat" ? "warning" : "pending"}
               </span>
               <span className="font-mono" style={{ fontWeight: 700 }}>{task.name}</span>
             </div>
 
             <div className="font-pixel" style={{ fontSize: "12px", color: "var(--mc-gray)", marginBottom: "8px" }}>
-              Job #{task.id.padStart(4, "0")}
+              Job #{task.id.padStart(4, "0")} | {task.type} | {task.status.toUpperCase()}
             </div>
 
             <div className="xp-bar" style={{ marginBottom: "4px" }}>
@@ -73,7 +103,7 @@ export default function TaskQueue() {
                 className="xp-bar-fill"
                 style={{
                   width: `${task.progress}%`,
-                  background: task.status === "failed" ? "var(--mc-red)" : task.progress > 60 ? "var(--mc-green)" : "var(--mc-yellow)"
+                  background: task.status === "failed" ? "var(--mc-red)" : task.status === "completed" ? "var(--mc-green)" : task.progress > 60 ? "var(--mc-green)" : "var(--mc-yellow)",
                 }}
               />
             </div>
@@ -85,7 +115,7 @@ export default function TaskQueue() {
         ))}
 
         {/* Empty slots */}
-        {[...Array(3)].map((_, i) => (
+        {[...Array(Math.max(0, 3 - tasks.length))].map((_, i) => (
           <div key={`empty-${i}`} className="mc-slot" style={{ padding: "16px", display: "flex", alignItems: "center", justifyContent: "center", borderStyle: "dashed" }}>
             <span className="material-symbols-outlined" style={{ color: "var(--mc-gray)", fontSize: "32px" }}>add</span>
           </div>
@@ -98,10 +128,11 @@ export default function TaskQueue() {
           TASK_LOG
         </div>
         <div style={{ fontFamily: "monospace", fontSize: "12px" }}>
-          <div><span style={{ color: "var(--mc-gray)" }}>[14:02]</span> <span style={{ color: "var(--mc-green)" }}>System initialized</span></div>
-          <div><span style={{ color: "var(--mc-gray)" }}>[14:03]</span> <span style={{ color: "var(--on-surface)" }}>Mining task started</span></div>
-          <div><span style={{ color: "var(--mc-gray)" }}>[14:05]</span> <span style={{ color: "var(--mc-yellow)" }}>Warning: Low durability</span></div>
-          <div><span style={{ color: "var(--mc-gray)" }}>[14:06]</span> <span style={{ color: "var(--mc-red)" }}>Defense task failed</span></div>
+          <div><span style={{ color: "var(--mc-gray)" }}>[{new Date().toLocaleTimeString()}]</span> <span style={{ color: "var(--mc-green)" }}>Task queue initialized</span></div>
+          <div><span style={{ color: "var(--mc-gray)" }}>[{new Date().toLocaleTimeString()}]</span> <span style={{ color: "var(--on-surface)" }}>{totalTasks} tasks loaded</span></div>
+          {failedTasks > 0 && (
+            <div><span style={{ color: "var(--mc-gray)" }}>[{new Date().toLocaleTimeString()}]</span> <span style={{ color: "var(--mc-red)" }}>Warning: {failedTasks} failed tasks</span></div>
+          )}
         </div>
         <div className="font-mono" style={{ color: "var(--mc-green)", marginTop: "8px" }}>
           &gt;_<span style={{ animation: "blink 1s infinite" }}>|</span>
