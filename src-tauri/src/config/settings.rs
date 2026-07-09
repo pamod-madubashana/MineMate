@@ -99,24 +99,33 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
+    fn config_path() -> std::path::PathBuf {
+        let dir = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+        dir.join("config").join("default.toml")
+    }
+
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
-        let config_path = std::path::Path::new("config/default.toml");
+        let config_path = Self::config_path();
         if config_path.exists() {
-            let content = std::fs::read_to_string(config_path)?;
+            let content = std::fs::read_to_string(&config_path)?;
             Ok(toml::from_str(&content)?)
         } else {
             let config = Self::default();
             let content = toml::to_string_pretty(&config)?;
-            std::fs::create_dir_all("config")?;
-            std::fs::write(config_path, content)?;
+            std::fs::create_dir_all(config_path.parent().unwrap())?;
+            std::fs::write(&config_path, content)?;
             Ok(config)
         }
     }
 
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let config_path = Self::config_path();
         let content = toml::to_string_pretty(self)?;
-        std::fs::create_dir_all("config")?;
-        std::fs::write("config/default.toml", content)?;
+        std::fs::create_dir_all(config_path.parent().unwrap())?;
+        std::fs::write(&config_path, content)?;
         Ok(())
     }
 }
