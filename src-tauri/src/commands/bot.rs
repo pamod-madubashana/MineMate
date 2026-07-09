@@ -15,6 +15,7 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
         azalea::Event::Spawn => {
             tracing::info!("Bot spawned in world");
             if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.azalea_client.write().replace(bot.clone());
                 b.set_connected(true);
                 b.emit_event(BotEvent::BotStarted);
             }
@@ -22,6 +23,8 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
         azalea::Event::Disconnect(reason) => {
             tracing::warn!("Bot disconnected: {:?}", reason);
             if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.azalea_client.write().take();
+                b.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
                 b.set_connected(false);
                 b.emit_event(BotEvent::Disconnected {
                     reason: format!("{:?}", reason),
@@ -107,6 +110,8 @@ pub async fn start_bot(server: String, username: String, app_handle: tauri::AppH
             tracing::info!("Bot exited with: {:?}", exit);
 
             if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.azalea_client.write().take();
+                b.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
                 b.set_connected(false);
                 b.emit_event(BotEvent::BotStopped);
             }
@@ -149,6 +154,8 @@ pub async fn stop_bot() -> Result<(), String> {
     {
         let mut bot = BOT_CLIENT.write();
         if let Some(client) = bot.as_ref() {
+            client.azalea_client.write().take();
+            client.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
             client.set_connected(false);
             client.emit_event(BotEvent::BotStopped);
         }
@@ -219,4 +226,36 @@ pub async fn get_audit_logs(count: u32) -> Result<Vec<serde_json::Value>, String
         })
         .collect();
     Ok(values)
+}
+
+#[tauri::command]
+pub async fn follow_player(player: String) -> Result<(), String> {
+    tracing::info!("Follow player: {}", player);
+
+    let bot = BOT_CLIENT.read();
+    let client = bot.as_ref().ok_or_else(|| "Bot not started".to_string())?;
+    let azalea = client.azalea_client.read();
+    let azalea = azalea.as_ref().ok_or_else(|| "Bot not yet connected".to_string())?;
+
+    client.follow_stop.store(false, std::sync::atomic::Ordering::Relaxed);
+    crate::bot::follow::start_following(azalea.clone(), player.clone(), client.follow_stop.clone());
+
+    get_audit_logger().log_success("follow_player", Some(&player), "Started following");
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn stop_following() -> Result<(), String> {
+    tracing::info!("Stop following");
+
+    let bot = BOT_CLIENT.read();
+    if let Some(client) = bot.as_ref() {
+        client.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
+        if let Some(azalea) = client.azalea_client.read().as_ref() {
+            azalea.stop_pathfinding();
+        }
+    }
+
+    get_audit_logger().log_success("stop_following", None, "Stopped following");
+    Ok(())
 }

@@ -17,6 +17,8 @@ pub fn run() {
             commands::bot::send_chat,
             commands::bot::get_connection_status,
             commands::bot::get_audit_logs,
+            commands::bot::follow_player,
+            commands::bot::stop_following,
             commands::config::get_config,
             commands::config::save_config,
             commands::memory::list_players,

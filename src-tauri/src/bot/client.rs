@@ -1,11 +1,13 @@
-#![allow(dead_code)]
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+
+use azalea::Client;
+use parking_lot::RwLock;
+use tauri::{AppHandle, Emitter};
+use tokio::sync::broadcast;
 
 use crate::bot::events::{BotEvent, BotStatus};
 use crate::config::AppConfig;
-use parking_lot::RwLock;
-use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
-use tokio::sync::broadcast;
 
 #[derive(Clone)]
 pub struct BotClient {
@@ -14,6 +16,8 @@ pub struct BotClient {
     pub config: Arc<RwLock<AppConfig>>,
     pub connected: Arc<RwLock<bool>>,
     pub app_handle: AppHandle,
+    pub azalea_client: Arc<RwLock<Option<Client>>>,
+    pub follow_stop: Arc<AtomicBool>,
 }
 
 impl BotClient {
@@ -25,6 +29,8 @@ impl BotClient {
             config: Arc::new(RwLock::new(config)),
             connected: Arc::new(RwLock::new(false)),
             app_handle,
+            azalea_client: Arc::new(RwLock::new(None)),
+            follow_stop: Arc::new(AtomicBool::new(false)),
         }
     }
 
