@@ -1,5 +1,4 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useBot, useConfig } from "../../hooks/useTauri";
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: "dashboard" },
@@ -11,28 +10,6 @@ const navItems = [
 export default function SideNavBar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { startBot, stopBot } = useBot();
-  const { getConfig } = useConfig();
-
-  const handleStartBot = async () => {
-    try {
-      const config = await getConfig();
-      const server = `${config.server.address}:${config.server.port}`;
-      await startBot(server, config.bot.username);
-      console.log("Bot started on", server);
-    } catch (e) {
-      console.error("Failed to start bot:", e);
-    }
-  };
-
-  const handleStopBot = async () => {
-    try {
-      await stopBot();
-      console.log("Bot stopped");
-    } catch (e) {
-      console.error("Failed to stop bot:", e);
-    }
-  };
 
   return (
     <aside className="sidebar">
@@ -59,23 +36,6 @@ export default function SideNavBar() {
       </nav>
 
       <div style={{ marginTop: "auto" }}>
-        <button
-          className="mc-button mc-button-primary"
-          style={{ width: "100%", marginBottom: "8px" }}
-          onClick={handleStartBot}
-        >
-          <span className="material-symbols-outlined" style={{ marginRight: "8px" }}>play_arrow</span>
-          Start Bot
-        </button>
-        <button
-          className="mc-button"
-          style={{ width: "100%", marginBottom: "8px" }}
-          onClick={handleStopBot}
-        >
-          <span className="material-symbols-outlined" style={{ marginRight: "8px" }}>stop</span>
-          Stop Bot
-        </button>
-
         <div style={{ textAlign: "center", padding: "8px" }}>
           <span className="material-symbols-outlined" style={{ color: "var(--mc-gray)" }}>help</span>
           <span className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", marginLeft: "4px" }}>
