@@ -2,7 +2,7 @@
 name = "minemate"
 version = "0.1.0"
 edition = "2021"
-description = "MineMate AI - AI-powered Minecraft staff bot"
+description = "MineMate - AI-powered Minecraft staff bot"
 authors = ["Pamod Madubashana"]
 
 [lib]

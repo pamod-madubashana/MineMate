@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="src-tauri/icons/icon.png" alt="MineMate AI Logo" width="128" height="128">
+  <img src="src-tauri/icons/icon.png" alt="MineMate Logo" width="128" height="128">
 </p>
 
-<h1 align="center">MineMate AI</h1>
+<h1 align="center">MineMate</h1>
 
 <p align="center">
   <strong>AI-Powered Minecraft Staff Bot</strong><br>
@@ -24,7 +24,7 @@
 
 ## Overview
 
-MineMate AI is a desktop application built with **Tauri v2** (Rust backend + React frontend) that creates an AI-powered Minecraft bot. Unlike traditional bots that only execute predefined commands, MineMate understands natural language, remembers the world, performs complex building tasks, assists players, and automates repetitive server operations.
+MineMate is a desktop application built with **Tauri v2** (Rust backend + React frontend) that creates an AI-powered Minecraft bot. Unlike traditional bots that only execute predefined commands, MineMate understands natural language, remembers the world, performs complex building tasks, assists players, and automates repetitive server operations.
 
 The bot combines deterministic automation with an LLM (via NVIDIA NIM API) so that repetitive tasks remain reliable while reasoning tasks become intelligent.
 
