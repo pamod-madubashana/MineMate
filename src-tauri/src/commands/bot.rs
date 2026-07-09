@@ -15,6 +15,7 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
         azalea::Event::Spawn => {
             tracing::info!("Bot spawned in world");
             if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.azalea_client.write().replace(bot.clone());
                 b.set_connected(true);
                 b.emit_event(BotEvent::BotStarted);
             }
@@ -22,6 +23,7 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
         azalea::Event::Disconnect(reason) => {
             tracing::warn!("Bot disconnected: {:?}", reason);
             if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.azalea_client.write().take();
                 b.set_connected(false);
                 b.emit_event(BotEvent::Disconnected {
                     reason: format!("{:?}", reason),
@@ -107,6 +109,7 @@ pub async fn start_bot(server: String, username: String, app_handle: tauri::AppH
             tracing::info!("Bot exited with: {:?}", exit);
 
             if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.azalea_client.write().take();
                 b.set_connected(false);
                 b.emit_event(BotEvent::BotStopped);
             }
@@ -149,6 +152,7 @@ pub async fn stop_bot() -> Result<(), String> {
     {
         let mut bot = BOT_CLIENT.write();
         if let Some(client) = bot.as_ref() {
+            client.azalea_client.write().take();
             client.set_connected(false);
             client.emit_event(BotEvent::BotStopped);
         }
@@ -182,12 +186,15 @@ pub async fn send_chat(message: String) -> Result<(), String> {
     tracing::info!("Sending chat: {}", message);
 
     let bot = BOT_CLIENT.read();
-    if let Some(client) = bot.as_ref() {
-        client.emit_event(BotEvent::ChatMessage {
-            player: "Bot".to_string(),
-            message: message.clone(),
-        });
-    }
+    let client = bot.as_ref().ok_or_else(|| "Bot not started".to_string())?;
+    let azalea = client.azalea_client.read();
+    let azalea = azalea.as_ref().ok_or_else(|| "Bot not yet connected to server".to_string())?;
+    azalea.chat(&message);
+
+    client.emit_event(BotEvent::ChatMessage {
+        player: "Bot".to_string(),
+        message: message.clone(),
+    });
 
     get_audit_logger().log_success("send_chat", None, &message);
 
