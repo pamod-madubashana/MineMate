@@ -30,9 +30,13 @@ pub fn run() {
             commands::config::get_config,
             commands::config::save_config,
             commands::memory::list_players,
+            commands::memory::save_player,
             commands::memory::list_locations,
+            commands::memory::save_location,
             commands::memory::list_blueprints,
+            commands::memory::save_blueprint,
             commands::memory::get_history,
+            commands::memory::log_event,
         ])
         .run(tauri::generate_context!())
         .expect("error while running MineMate AI");
