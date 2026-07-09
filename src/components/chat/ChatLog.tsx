@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useBot, useBotEvents, useMemory, HistoryEntry } from "../../hooks/useTauri";
 
 interface ChatMessage {
   id: number;
@@ -10,19 +11,55 @@ interface ChatMessage {
 }
 
 export default function ChatLog() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 1, timestamp: "14:02", player: "Server", message: "Welcome to MineMate AI!", isBot: false, isSystem: true },
-    { id: 2, timestamp: "14:02", player: "MineMate", message: "Bot connected and ready.", isBot: true, isSystem: false },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const { sendChat } = useBot();
+  const { getHistory } = useMemory();
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const history = await getHistory(50);
+        const chatMessages: ChatMessage[] = history
+          .filter((h) => h.event_type === "chat" || h.event_type === "system")
+          .map((h, i) => ({
+            id: i,
+            timestamp: new Date(h.timestamp).toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
+            player: h.player || "System",
+            message: h.details || "",
+            isBot: h.player === "MineMate",
+            isSystem: h.event_type === "system",
+          }));
+        setMessages(chatMessages);
+      } catch (e) {
+        console.error("Failed to load chat history:", e);
+      }
+    };
+    loadHistory();
+  }, [getHistory]);
+
+  useBotEvents((event) => {
+    if (event.type === "ChatMessage") {
+      const newMsg: ChatMessage = {
+        id: messages.length + 1,
+        timestamp: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
+        player: event.data.player,
+        message: event.data.message,
+        isBot: event.data.player === "MineMate",
+        isSystem: false,
+      };
+      setMessages((prev) => [...prev, newMsg]);
+    }
+  });
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input.trim()) return;
+
     const newMsg: ChatMessage = {
       id: messages.length + 1,
       timestamp: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
@@ -31,8 +68,15 @@ export default function ChatLog() {
       isBot: false,
       isSystem: false,
     };
+
     setMessages([...messages, newMsg]);
     setInput("");
+
+    try {
+      await sendChat(input);
+    } catch (e) {
+      console.error("Failed to send chat:", e);
+    }
   };
 
   return (
@@ -43,6 +87,11 @@ export default function ChatLog() {
 
       {/* Chat Messages */}
       <div className="mc-bevel-in" style={{ padding: "16px", height: "60vh", overflowY: "auto", marginBottom: "16px" }}>
+        {messages.length === 0 && (
+          <div style={{ color: "var(--mc-gray)", fontStyle: "italic" }}>
+            No messages yet. Start chatting!
+          </div>
+        )}
         {messages.map((msg) => (
           <div key={msg.id} style={{ marginBottom: "8px", fontFamily: "'Space Mono', monospace", fontSize: "14px" }}>
             <span style={{ color: "var(--mc-gray)" }}>[{msg.timestamp}] </span>
@@ -84,11 +133,11 @@ export default function ChatLog() {
       {/* XP Bar */}
       <div style={{ marginTop: "16px", maxWidth: "600px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-          <span className="font-mono" style={{ fontSize: "12px", color: "var(--mc-green)" }}>XP LEVEL 0</span>
-          <span className="font-mono" style={{ fontSize: "12px", color: "var(--mc-green)" }}>SERVER LOAD: 0%</span>
+          <span className="font-mono" style={{ fontSize: "12px", color: "var(--mc-green)" }}>CHAT LEVEL {messages.length}</span>
+          <span className="font-mono" style={{ fontSize: "12px", color: "var(--mc-green)" }}>MESSAGES: {messages.length}</span>
         </div>
         <div className="xp-bar">
-          <div className="xp-bar-fill" style={{ width: "0%" }} />
+          <div className="xp-bar-fill" style={{ width: `${Math.min(messages.length * 2, 100)}%` }} />
         </div>
       </div>
     </div>

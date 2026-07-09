@@ -1,29 +1,62 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useConfig, AppConfig } from "../../hooks/useTauri";
 
 interface ToggleSwitch {
   label: string;
+  key: keyof AppConfig["automation"];
   enabled: boolean;
 }
 
 export default function ConfigPanel() {
-  const [toggles, setToggles] = useState<ToggleSwitch[]>([
-    { label: "Auto Sleep", enabled: true },
-    { label: "Auto Eat", enabled: true },
-    { label: "Auto Reconnect", enabled: true },
-    { label: "Welcome Messages", enabled: true },
-    { label: "Starter Kit on Respawn", enabled: true },
-  ]);
+  const { getConfig, saveConfig } = useConfig();
+  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const [apiKey, setApiKey] = useState("");
-  const [server, setServer] = useState("localhost");
-  const [port, setPort] = useState("25565");
-  const [username, setUsername] = useState("MineMate");
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const c = await getConfig();
+        setConfig(c);
+      } catch (e) {
+        console.error("Failed to load config:", e);
+      }
+    };
+    loadConfig();
+  }, [getConfig]);
 
   const toggleSwitch = (index: number) => {
-    const newToggles = [...toggles];
-    newToggles[index].enabled = !newToggles[index].enabled;
-    setToggles(newToggles);
+    if (!config) return;
+    const newConfig = { ...config };
+    const keys: (keyof AppConfig["automation"])[] = [
+      "auto_sleep", "auto_eat", "auto_reconnect", "welcome_messages", "starter_kit_on_respawn"
+    ];
+    const key = keys[index];
+    newConfig.automation[key] = !newConfig.automation[key];
+    setConfig(newConfig);
   };
+
+  const handleSave = async () => {
+    if (!config) return;
+    setSaving(true);
+    try {
+      await saveConfig(config);
+    } catch (e) {
+      console.error("Failed to save config:", e);
+    }
+    setSaving(false);
+  };
+
+  if (!config) {
+    return <div style={{ color: "var(--mc-gray)" }}>Loading configuration...</div>;
+  }
+
+  const toggles = [
+    { label: "Auto Sleep", key: "auto_sleep" as keyof AppConfig["automation"], enabled: config.automation.auto_sleep },
+    { label: "Auto Eat", key: "auto_eat" as keyof AppConfig["automation"], enabled: config.automation.auto_eat },
+    { label: "Auto Reconnect", key: "auto_reconnect" as keyof AppConfig["automation"], enabled: config.automation.auto_reconnect },
+    { label: "Welcome Messages", key: "welcome_messages" as keyof AppConfig["automation"], enabled: config.automation.welcome_messages },
+    { label: "Starter Kit on Respawn", key: "starter_kit_on_respawn" as keyof AppConfig["automation"], enabled: config.automation.starter_kit_on_respawn },
+  ];
 
   return (
     <div>
@@ -47,15 +80,42 @@ export default function ConfigPanel() {
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div>
               <label className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", display: "block", marginBottom: "4px" }}>Server Address</label>
-              <input className="mc-input" style={{ width: "100%" }} value={server} onChange={(e) => setServer(e.target.value)} />
+              <input
+                className="mc-input"
+                style={{ width: "100%" }}
+                value={config.server.address}
+                onChange={(e) => setConfig({ ...config, server: { ...config.server, address: e.target.value } })}
+              />
             </div>
             <div>
               <label className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", display: "block", marginBottom: "4px" }}>Port</label>
-              <input className="mc-input" style={{ width: "100%" }} value={port} onChange={(e) => setPort(e.target.value)} />
+              <input
+                className="mc-input"
+                style={{ width: "100%" }}
+                value={config.server.port}
+                onChange={(e) => setConfig({ ...config, server: { ...config.server, port: parseInt(e.target.value) || 25565 } })}
+              />
             </div>
             <div>
               <label className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", display: "block", marginBottom: "4px" }}>Bot Username</label>
-              <input className="mc-input" style={{ width: "100%" }} value={username} onChange={(e) => setUsername(e.target.value)} />
+              <input
+                className="mc-input"
+                style={{ width: "100%" }}
+                value={config.bot.username}
+                onChange={(e) => setConfig({ ...config, bot: { ...config.bot, username: e.target.value } })}
+              />
+            </div>
+            <div>
+              <label className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", display: "block", marginBottom: "4px" }}>Permission Mode</label>
+              <select
+                className="mc-input"
+                style={{ width: "100%" }}
+                value={config.bot.permission_mode}
+                onChange={(e) => setConfig({ ...config, bot: { ...config.bot, permission_mode: e.target.value } })}
+              >
+                <option value="Player">Player</option>
+                <option value="Operator">Operator</option>
+              </select>
             </div>
           </div>
         </div>
@@ -70,15 +130,49 @@ export default function ConfigPanel() {
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div>
               <label className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", display: "block", marginBottom: "4px" }}>NVIDIA NIM API Key</label>
-              <input className="mc-input" style={{ width: "100%" }} type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="nvapi-..." />
+              <input
+                className="mc-input"
+                style={{ width: "100%" }}
+                type="password"
+                value={config.ai.api_key}
+                onChange={(e) => setConfig({ ...config, ai: { ...config.ai, api_key: e.target.value } })}
+                placeholder="nvapi-..."
+              />
             </div>
             <div>
               <label className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", display: "block", marginBottom: "4px" }}>Model</label>
-              <select className="mc-input" style={{ width: "100%" }}>
-                <option>meta/llama-3.3-70b-instruct</option>
-                <option>qwen/qwen2.5-coder-32b-instruct</option>
-                <option>deepseek-ai/deepseek-r1</option>
+              <select
+                className="mc-input"
+                style={{ width: "100%" }}
+                value={config.ai.model}
+                onChange={(e) => setConfig({ ...config, ai: { ...config.ai, model: e.target.value } })}
+              >
+                <option value="meta/llama-3.3-70b-instruct">Llama 3.3 70B</option>
+                <option value="qwen/qwen2.5-coder-32b-instruct">Qwen 2.5 Coder 32B</option>
+                <option value="deepseek-ai/deepseek-r1">DeepSeek R1</option>
               </select>
+            </div>
+            <div>
+              <label className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", display: "block", marginBottom: "4px" }}>Temperature: {config.ai.temperature}</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={config.ai.temperature}
+                onChange={(e) => setConfig({ ...config, ai: { ...config.ai, temperature: parseFloat(e.target.value) } })}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div>
+              <label className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", display: "block", marginBottom: "4px" }}>Max Tokens</label>
+              <input
+                className="mc-input"
+                style={{ width: "100%" }}
+                type="number"
+                value={config.ai.max_tokens}
+                onChange={(e) => setConfig({ ...config, ai: { ...config.ai, max_tokens: parseInt(e.target.value) || 1024 } })}
+              />
             </div>
           </div>
         </div>
@@ -118,22 +212,27 @@ export default function ConfigPanel() {
         <div className="inventory-grid">
           {[...Array(36)].map((_, i) => (
             <div key={i} className="inventory-slot">
-              {i === 0 && <span className="material-symbols-outlined" style={{ color: "var(--mc-aqua)" }}>sports_esports</span>}
-              {i === 1 && <span className="material-symbols-outlined" style={{ color: "var(--mc-aqua)" }}>agriculture</span>}
-              {i === 8 && (
+              {config.starter_kit[i] && (
                 <div style={{ position: "relative" }}>
-                  <span className="material-symbols-outlined" style={{ color: "var(--mc-aqua)" }}>nutrition</span>
-                  <span className="font-pixel" style={{ position: "absolute", bottom: "-4px", right: "-4px", fontSize: "10px", color: "var(--mc-yellow)" }}>64</span>
+                  <span className="material-symbols-outlined" style={{ color: "var(--mc-aqua)" }}>sports_esports</span>
+                  <span className="font-pixel" style={{ position: "absolute", bottom: "-4px", right: "-4px", fontSize: "10px", color: "var(--mc-yellow)" }}>
+                    {config.starter_kit[i].count}
+                  </span>
                 </div>
               )}
             </div>
           ))}
         </div>
+      </div>
 
-        <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
-          <button className="mc-button">RESET KIT</button>
-          <button className="mc-button mc-button-primary">SAVE CONFIG</button>
-        </div>
+      {/* Save Button */}
+      <div style={{ marginTop: "16px", display: "flex", gap: "8px" }}>
+        <button className="mc-button" onClick={() => window.location.reload()}>
+          RESET
+        </button>
+        <button className="mc-button mc-button-primary" onClick={handleSave} disabled={saving}>
+          {saving ? "SAVING..." : "SAVE CONFIG"}
+        </button>
       </div>
     </div>
   );
