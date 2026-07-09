@@ -236,23 +236,31 @@ impl NimClient {
     }
 
     async fn rate_limit(&self) {
-        let mut count = self.request_count.write();
-        let mut last_time = self.last_request_time.write();
+        let wait_time = {
+            let mut count = self.request_count.write();
+            let mut last_time = self.last_request_time.write();
 
-        let now = std::time::Instant::now();
-        let elapsed = now.duration_since(*last_time);
+            let now = std::time::Instant::now();
+            let elapsed = now.duration_since(*last_time);
 
-        if elapsed.as_secs() < 60 && *count >= 25 {
-            let wait_time = 60 - elapsed.as_secs();
-            tracing::info!("Rate limit reached, waiting {} seconds", wait_time);
-            tokio::time::sleep(std::time::Duration::from_secs(wait_time)).await;
-            *count = 0;
-            *last_time = std::time::Instant::now();
-        } else if elapsed.as_secs() >= 60 {
-            *count = 0;
-            *last_time = now;
+            if elapsed.as_secs() < 60 && *count >= 25 {
+                let wait = 60 - elapsed.as_secs();
+                tracing::info!("Rate limit reached, waiting {} seconds", wait);
+                *count = 0;
+                *last_time = std::time::Instant::now();
+                Some(wait)
+            } else {
+                if elapsed.as_secs() >= 60 {
+                    *count = 0;
+                    *last_time = now;
+                }
+                *count += 1;
+                None
+            }
+        };
+
+        if let Some(secs) = wait_time {
+            tokio::time::sleep(std::time::Duration::from_secs(secs)).await;
         }
-
-        *count += 1;
     }
 }

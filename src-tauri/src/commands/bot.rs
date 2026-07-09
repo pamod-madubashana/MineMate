@@ -15,6 +15,7 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
         azalea::Event::Spawn => {
             tracing::info!("Bot spawned in world");
             if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.azalea_client.write().replace(bot.clone());
                 b.set_connected(true);
                 b.emit_event(BotEvent::BotStarted);
             }
@@ -22,6 +23,7 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
         azalea::Event::Disconnect(reason) => {
             tracing::warn!("Bot disconnected: {:?}", reason);
             if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.azalea_client.write().take();
                 b.set_connected(false);
                 b.emit_event(BotEvent::Disconnected {
                     reason: format!("{:?}", reason),
@@ -29,11 +31,26 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
             }
         }
         azalea::Event::Chat(chat) => {
+            let sender = chat.sender().unwrap_or_default();
+            let content = chat.content();
             if let Some(b) = BOT_CLIENT.read().as_ref() {
                 b.emit_event(BotEvent::ChatMessage {
-                    player: chat.sender().unwrap_or_default(),
-                    message: chat.content(),
+                    player: sender.clone(),
+                    message: content.clone(),
                 });
+            }
+            // AI auto-reply in a background task
+            if !sender.is_empty() && !content.is_empty() {
+                if let Some(b) = BOT_CLIENT.read().as_ref() {
+                    if let Some(azalea) = b.azalea_client.read().as_ref() {
+                        let bot = azalea.clone();
+                        let s = sender.clone();
+                        let m = content.clone();
+                        tokio::task::spawn(async move {
+                            crate::ai::chat_handler::handle_chat(&bot, &s, &m).await;
+                        });
+                    }
+                }
             }
         }
         azalea::Event::Tick => {
@@ -107,6 +124,7 @@ pub async fn start_bot(server: String, username: String, app_handle: tauri::AppH
             tracing::info!("Bot exited with: {:?}", exit);
 
             if let Some(b) = BOT_CLIENT.read().as_ref() {
+                b.azalea_client.write().take();
                 b.set_connected(false);
                 b.emit_event(BotEvent::BotStopped);
             }
@@ -149,6 +167,7 @@ pub async fn stop_bot() -> Result<(), String> {
     {
         let mut bot = BOT_CLIENT.write();
         if let Some(client) = bot.as_ref() {
+            client.azalea_client.write().take();
             client.set_connected(false);
             client.emit_event(BotEvent::BotStopped);
         }
