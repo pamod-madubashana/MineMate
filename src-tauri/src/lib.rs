@@ -38,5 +38,5 @@ pub fn run() {
             commands::memory::log_event,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running MineMate AI");
+        .expect("error while running MineMate");
 }
