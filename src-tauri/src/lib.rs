@@ -1,5 +1,3 @@
-use tauri::Manager;
-
 mod ai;
 mod commands;
 mod config;

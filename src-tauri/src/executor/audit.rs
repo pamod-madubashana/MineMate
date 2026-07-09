@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use parking_lot::RwLock;
-use std::collections::HashMap;
 
 pub struct AuditLogger {
     logs: Arc<RwLock<Vec<AuditEntry>>>,

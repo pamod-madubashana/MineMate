@@ -4,6 +4,7 @@ use std::sync::Arc;
 use parking_lot::RwLock;
 use tokio::sync::broadcast;
 
+#[derive(Clone)]
 pub struct BotClient {
     pub status: Arc<RwLock<BotStatus>>,
     pub event_tx: broadcast::Sender<BotEvent>,

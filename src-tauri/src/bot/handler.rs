@@ -1,9 +1,9 @@
 use crate::bot::client::BotClient;
-use crate::bot::events::{BotEvent, BotStatus};
+use crate::bot::events::BotEvent;
 use crate::config::AppConfig;
 use std::sync::Arc;
 use parking_lot::RwLock;
-use tauri::Manager;
+use tauri::Emitter;
 
 pub static BOT_CLIENT: once_cell::sync::Lazy<Arc<RwLock<Option<BotClient>>>> =
     once_cell::sync::Lazy::new(|| Arc::new(RwLock::new(None)));
@@ -60,12 +60,7 @@ pub async fn connect_to_server(
     address: &str,
     username: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use azalea::prelude::*;
-    use azalea::account::Account;
-
     tracing::info!("Connecting to {} as {}", address, username);
-
-    let account = Account::offline(username);
 
     // Note: Azalea uses Bevy ECS internally. The actual connection
     // happens through the ClientBuilder which runs in its own event loop.
