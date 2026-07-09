@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 
 // Bot types
 export interface BotStatus {
@@ -87,77 +87,77 @@ export interface Blueprint {
 
 // Bot commands
 export const useBot = () => {
-  const startBot = async (server: string, username: string) => {
+  const startBot = useCallback(async (server: string, username: string) => {
     return invoke("start_bot", { server, username });
-  };
+  }, []);
 
-  const stopBot = async () => {
+  const stopBot = useCallback(async () => {
     return invoke("stop_bot");
-  };
+  }, []);
 
-  const getBotStatus = async (): Promise<BotStatus> => {
+  const getBotStatus = useCallback(async (): Promise<BotStatus> => {
     return invoke("get_bot_status");
-  };
+  }, []);
 
-  const sendChat = async (message: string) => {
+  const sendChat = useCallback(async (message: string) => {
     return invoke("send_chat", { message });
-  };
+  }, []);
 
-  const getConnectionStatus = async (): Promise<boolean> => {
+  const getConnectionStatus = useCallback(async (): Promise<boolean> => {
     return invoke("get_connection_status");
-  };
+  }, []);
 
-  return { startBot, stopBot, getBotStatus, sendChat, getConnectionStatus };
+  return useMemo(() => ({ startBot, stopBot, getBotStatus, sendChat, getConnectionStatus }), [startBot, stopBot, getBotStatus, sendChat, getConnectionStatus]);
 };
 
 // Config commands
 export const useConfig = () => {
-  const getConfig = async (): Promise<AppConfig> => {
+  const getConfig = useCallback(async (): Promise<AppConfig> => {
     return invoke("get_config");
-  };
+  }, []);
 
-  const saveConfig = async (config: AppConfig) => {
+  const saveConfig = useCallback(async (config: AppConfig) => {
     return invoke("save_config", { config });
-  };
+  }, []);
 
-  return { getConfig, saveConfig };
+  return useMemo(() => ({ getConfig, saveConfig }), [getConfig, saveConfig]);
 };
 
 // Memory commands
 export const useMemory = () => {
-  const listPlayers = async (): Promise<Player[]> => {
+  const listPlayers = useCallback(async (): Promise<Player[]> => {
     return invoke("list_players");
-  };
+  }, []);
 
-  const savePlayer = async (name: string): Promise<Player> => {
+  const savePlayer = useCallback(async (name: string): Promise<Player> => {
     return invoke("save_player", { name });
-  };
+  }, []);
 
-  const listLocations = async (): Promise<Location[]> => {
+  const listLocations = useCallback(async (): Promise<Location[]> => {
     return invoke("list_locations");
-  };
+  }, []);
 
-  const saveLocation = async (name: string, x: number, y: number, z: number, dimension: string, description: string): Promise<Location> => {
+  const saveLocation = useCallback(async (name: string, x: number, y: number, z: number, dimension: string, description: string): Promise<Location> => {
     return invoke("save_location", { name, x, y, z, dimension, description });
-  };
+  }, []);
 
-  const listBlueprints = async (): Promise<Blueprint[]> => {
+  const listBlueprints = useCallback(async (): Promise<Blueprint[]> => {
     return invoke("list_blueprints");
-  };
+  }, []);
 
-  const saveBlueprint = async (name: string, data: string, author: string): Promise<Blueprint> => {
+  const saveBlueprint = useCallback(async (name: string, data: string, author: string): Promise<Blueprint> => {
     return invoke("save_blueprint", { name, data, author });
-  };
+  }, []);
 
-  const getHistory = async (limit: number): Promise<HistoryEntry[]> => {
+  const getHistory = useCallback(async (limit: number): Promise<HistoryEntry[]> => {
     return invoke("get_history", { limit });
-  };
+  }, []);
 
-  const logEvent = async (eventType: string, player: string | null, details: string): Promise<HistoryEntry> => {
+  const logEvent = useCallback(async (eventType: string, player: string | null, details: string): Promise<HistoryEntry> => {
     return invoke("log_event", { eventType, player, details });
-  };
+  }, []);
 
-  return { listPlayers, savePlayer, listLocations, saveLocation, listBlueprints, saveBlueprint, getHistory, logEvent };
+  return useMemo(() => ({ listPlayers, savePlayer, listLocations, saveLocation, listBlueprints, saveBlueprint, getHistory, logEvent }), [listPlayers, savePlayer, listLocations, saveLocation, listBlueprints, saveBlueprint, getHistory, logEvent]);
 };
 
 // Event listener hook

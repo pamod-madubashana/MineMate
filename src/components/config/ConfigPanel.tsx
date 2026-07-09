@@ -22,7 +22,7 @@ export default function ConfigPanel() {
       }
     };
     loadConfig();
-  }, [getConfig]);
+  }, []);
 
   const toggleSwitch = (index: number) => {
     if (!config) return;
