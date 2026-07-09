@@ -31,11 +31,26 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
             }
         }
         azalea::Event::Chat(chat) => {
+            let sender = chat.sender().unwrap_or_default();
+            let content = chat.content();
             if let Some(b) = BOT_CLIENT.read().as_ref() {
                 b.emit_event(BotEvent::ChatMessage {
-                    player: chat.sender().unwrap_or_default(),
-                    message: chat.content(),
+                    player: sender.clone(),
+                    message: content.clone(),
                 });
+            }
+            // AI auto-reply in a background task
+            if !sender.is_empty() && !content.is_empty() {
+                if let Some(b) = BOT_CLIENT.read().as_ref() {
+                    if let Some(azalea) = b.azalea_client.read().as_ref() {
+                        let bot = azalea.clone();
+                        let s = sender.clone();
+                        let m = content.clone();
+                        tokio::task::spawn(async move {
+                            crate::ai::chat_handler::handle_chat(&bot, &s, &m).await;
+                        });
+                    }
+                }
             }
         }
         azalea::Event::Tick => {
