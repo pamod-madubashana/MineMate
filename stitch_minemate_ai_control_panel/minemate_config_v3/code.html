@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BotControl v1.0 | Admin GUI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Inter:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-low": "#1b1b1b",
+                    "background": "#131313",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-primary-fixed-variant": "#005309",
+                    "outline-variant": "#3c4b38",
+                    "on-tertiary-fixed": "#410005",
+                    "on-error-container": "#ffdad6",
+                    "surface-container": "#202020",
+                    "on-secondary-container": "#b5b5b5",
+                    "inverse-surface": "#e5e2e1",
+                    "on-primary": "#003a04",
+                    "tertiary": "#fffbff",
+                    "surface-container-high": "#2a2a2a",
+                    "surface-container-highest": "#353535",
+                    "tertiary-container": "#ffd6d3",
+                    "surface-dim": "#131313",
+                    "tertiary-fixed-dim": "#ffb3ae",
+                    "on-secondary": "#2f3031",
+                    "surface-bright": "#393939",
+                    "on-background": "#e5e2e1",
+                    "secondary": "#c7c6c6",
+                    "primary-fixed-dim": "#33e43d",
+                    "secondary-fixed-dim": "#c7c6c6",
+                    "on-primary-container": "#007311",
+                    "on-surface": "#e5e2e1",
+                    "surface-variant": "#353535",
+                    "primary": "#f6ffef",
+                    "on-surface-variant": "#bbcbb3",
+                    "secondary-container": "#464747",
+                    "primary-container": "#55ff55",
+                    "primary-fixed": "#74ff6b",
+                    "on-tertiary-container": "#bd242c",
+                    "secondary-fixed": "#e3e2e2",
+                    "surface-tint": "#33e43d",
+                    "tertiary-fixed": "#ffdad7",
+                    "on-tertiary-fixed-variant": "#930016",
+                    "on-primary-fixed": "#002202",
+                    "on-secondary-fixed-variant": "#464747",
+                    "surface": "#131313",
+                    "inverse-on-surface": "#303030",
+                    "on-secondary-fixed": "#1b1c1c",
+                    "outline": "#86957f",
+                    "on-tertiary": "#68000c",
+                    "on-error": "#690005",
+                    "error-container": "#93000a",
+                    "inverse-primary": "#006e10",
+                    "error": "#ffb4ab"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "block-md": "16px",
+                    "pixel-unit": "4px",
+                    "block-sm": "8px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "40px",
+                    "block-lg": "32px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Space Mono"],
+                    "label-md": ["Space Mono"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "1.0", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .pixel-border-raised {
+            border: 4px solid;
+            border-top-color: #BDBDBD;
+            border-left-color: #BDBDBD;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+        }
+        .pixel-border-sunken {
+            border: 4px solid;
+            border-top-color: #000000;
+            border-left-color: #000000;
+            border-right-color: #8B8B8B;
+            border-bottom-color: #8B8B8B;
+        }
+        .pixel-border-slot {
+            border: 4px solid;
+            border-top-color: #373737;
+            border-left-color: #373737;
+            border-right-color: #ffffff;
+            border-bottom-color: #ffffff;
+        }
+        .inventory-slot {
+            width: 64px;
+            height: 64px;
+            background: #8B8B8B;
+            position: relative;
+        }
+        .inventory-slot:hover {
+            background: #bdbdbd;
+        }
+        .mc-btn-shadow {
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.8);
+        }
+        .experience-bar-segment {
+            box-shadow: inset 1px 0 0 0 #000;
+        }
+        .tooltip-custom {
+            display: none;
+            position: absolute;
+            z-index: 50;
+            background: #1d0a21;
+            border: 2px solid #5d00ff;
+            color: #ffffff;
+            padding: 8px;
+            pointer-events: none;
+            font-family: 'Space Mono', monospace;
+            min-width: 150px;
+        }
+        .inventory-slot:hover .tooltip-custom {
+            display: block;
+        }
+        .toggle-btn[data-state="on"] {
+            color: #55FF55;
+        }
+        .toggle-btn[data-state="off"] {
+            color: #FF5555;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar (The Anchor) -->
+<header class="fixed top-0 w-full z-40 bg-surface/80 backdrop-blur-xl border-b-4 border-outline-variant flex justify-between items-center px-gutter h-16">
+<div class="flex items-center gap-4">
+<h1 class="font-headline-md text-headline-md text-primary-fixed drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">BotControl v1.0</h1>
+<div class="hidden md:flex gap-6">
+<span class="text-on-surface-variant font-bold">Status: Online</span>
+<span class="text-on-surface-variant font-bold">IP: play.server.com</span>
+</div>
+</div>
+<div class="flex items-center gap-block-sm">
+<button class="pixel-border-raised bg-surface-container hover:bg-surface-container-high active:translate-y-0.5 transition-transform p-2">
+<span class="material-symbols-outlined text-primary-fixed-dim" data-icon="settings">settings</span>
+</button>
+<button class="pixel-border-raised bg-surface-container hover:bg-surface-container-high active:translate-y-0.5 transition-transform p-2">
+<span class="material-symbols-outlined text-primary-fixed-dim" data-icon="power_settings_new">power_settings_new</span>
+</button>
+</div>
+</header>
+<div class="flex pt-16 min-h-screen">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col gap-block-sm p-block-md h-[calc(100vh-64px)] w-64 border-r-4 border-outline-variant bg-surface-container-low sticky top-16">
+<div class="mb-block-lg">
+<h2 class="font-headline-md text-headline-md text-primary-fixed">Admin GUI</h2>
+<p class="text-on-surface-variant font-label-md">Voxel Engine v2</p>
+</div>
+<div class="flex flex-col gap-2">
+<a class="bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant px-4 py-3 flex items-center gap-3 active:scale-95 transition-all hover:border-primary-fixed-dim" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant px-4 py-3 flex items-center gap-3 active:scale-95 transition-all hover:border-primary-fixed-dim" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-label-md text-label-md">Logs</span>
+</a>
+<a class="bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant px-4 py-3 flex items-center gap-3 active:scale-95 transition-all hover:border-primary-fixed-dim" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Players</span>
+</a>
+<a class="bg-secondary-container text-on-secondary-container border-4 border-t-outline-variant border-l-outline-variant border-r-surface-container-highest border-b-surface-container-highest translate-y-0.5 px-4 py-3 flex items-center gap-3 active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+<span class="font-label-md text-label-md">Console</span>
+</a>
+<a class="bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant px-4 py-3 flex items-center gap-3 active:scale-95 transition-all hover:border-primary-fixed-dim" href="#">
+<span class="material-symbols-outlined" data-icon="extension">extension</span>
+<span class="font-label-md text-label-md">Plugins</span>
+</a>
+</div>
+<div class="mt-auto pt-4 flex flex-col gap-4">
+<button class="pixel-border-raised bg-primary-container text-on-primary-container font-bold py-3 active:scale-95 transition-all mc-btn-shadow">
+                    Sync Server
+                </button>
+<a class="flex items-center gap-2 text-on-surface-variant hover:text-primary-fixed" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="flex-1 p-block-md md:p-margin-desktop bg-surface-dim overflow-y-auto">
+<div class="max-w-4xl mx-auto space-y-block-lg">
+<!-- Section Header -->
+<div class="flex flex-col gap-2">
+<h2 class="font-headline-md text-headline-md text-primary-fixed drop-shadow-[1px_1px_0px_#000]">Configuration Panel</h2>
+<p class="text-on-surface-variant">Manage global server parameters and starter inventory presets.</p>
+<div class="w-full bg-black h-4 pixel-border-sunken mt-4 relative overflow-hidden">
+<div class="h-full bg-primary-container w-3/4 flex">
+<div class="h-full w-full flex">
+<div class="experience-bar-segment border-r-2 border-black/30 h-full w-[10%]"></div>
+<div class="experience-bar-segment border-r-2 border-black/30 h-full w-[10%]"></div>
+<div class="experience-bar-segment border-r-2 border-black/30 h-full w-[10%]"></div>
+<div class="experience-bar-segment border-r-2 border-black/30 h-full w-[10%]"></div>
+<div class="experience-bar-segment border-r-2 border-black/30 h-full w-[10%]"></div>
+<div class="experience-bar-segment border-r-2 border-black/30 h-full w-[10%]"></div>
+<div class="experience-bar-segment border-r-2 border-black/30 h-full w-[10%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Grid Config Sections -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-block-md">
+<!-- General Settings Box -->
+<section class="pixel-border-raised bg-[#8B8B8B]/10 p-6 flex flex-col gap-4">
+<div class="flex items-center gap-2 border-b-4 border-outline-variant pb-2 mb-2">
+<span class="material-symbols-outlined text-primary-fixed" data-icon="tune">tune</span>
+<h3 class="font-headline-md text-headline-md uppercase text-sm">General Settings</h3>
+</div>
+<div class="space-y-4">
+<!-- Toggle Switches -->
+<div class="flex justify-between items-center">
+<span class="font-label-md">PvP Mode</span>
+<button class="toggle-btn pixel-border-raised bg-[#8B8B8B] px-6 py-2 min-w-[100px] font-headline-md text-sm mc-btn-shadow transition-all active:translate-y-0.5" data-state="on" onclick="toggleSwitch(this)">
+                                    ON
+                                </button>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-md">Hardcore Mode</span>
+<button class="toggle-btn pixel-border-raised bg-[#8B8B8B] px-6 py-2 min-w-[100px] font-headline-md text-sm mc-btn-shadow transition-all active:translate-y-0.5" data-state="off" onclick="toggleSwitch(this)">
+                                    OFF
+                                </button>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-md">Flight Enabled</span>
+<button class="toggle-btn pixel-border-raised bg-[#8B8B8B] px-6 py-2 min-w-[100px] font-headline-md text-sm mc-btn-shadow transition-all active:translate-y-0.5" data-state="off" onclick="toggleSwitch(this)">
+                                    OFF
+                                </button>
+</div>
+</div>
+</section>
+<!-- Server Limits -->
+<section class="pixel-border-raised bg-[#8B8B8B]/10 p-6 flex flex-col gap-4">
+<div class="flex items-center gap-2 border-b-4 border-outline-variant pb-2 mb-2">
+<span class="material-symbols-outlined text-primary-fixed" data-icon="speed">speed</span>
+<h3 class="font-headline-md text-headline-md uppercase text-sm">Performance</h3>
+</div>
+<div class="space-y-4">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-xs text-on-surface-variant">View Distance (Chunks)</label>
+<div class="pixel-border-sunken bg-black p-3 font-headline-md text-primary-container">
+                                    16
+                                </div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-xs text-on-surface-variant">Max Players</label>
+<div class="pixel-border-sunken bg-black p-3 font-headline-md text-primary-container">
+                                    250
+                                </div>
+</div>
+</div>
+</section>
+</div>
+<!-- Starter Kit Editor (Inventory Grid) -->
+<section class="pixel-border-raised bg-[#8B8B8B]/10 p-6">
+<div class="flex items-center justify-between border-b-4 border-outline-variant pb-4 mb-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-fixed" data-icon="inventory_2">inventory_2</span>
+<h3 class="font-headline-md text-headline-md uppercase text-sm">Starter Kit Editor</h3>
+</div>
+<span class="text-xs font-label-md text-on-surface-variant">9 x 4 STORAGE GRID</span>
+</div>
+<div class="flex justify-center overflow-x-auto pb-4">
+<div class="grid grid-cols-9 gap-1 bg-[#404040] p-1 border-4 border-black">
+<!-- JS will populate or manually for 36 slots -->
+<!-- Row 1 -->
+<div class="inventory-slot pixel-border-slot flex items-center justify-center cursor-pointer">
+<img class="w-10 h-10 object-contain" data-alt="A pixel art icon of a glowing iron sword with blue enchantments, stylized for a sandbox voxel game inventory UI, sharp edges, 64x64." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbVdAcMgzIImOPsYNXZjxpe7_1gVQ56MJLANDWb6zkwvt8Mw31Lu7fMAGHWVMEM7r6KVc8GylxzQyPoyjaFhPkVHmgHML3drsvCkxEsJxV3nr9ZUH6pUWi-wibHOIvlMcLgykfP2w9hPIEp7HbVtVLz5UcFtKRiek8-H3PZk8y5AjRESkMu-DovE-3uIIT2pAP2GtdqyN_43v9SVVePlkp6lt_Kj8p0VbsBsfaDRpZlSpcDe9o_p-yVA"/>
+<div class="tooltip-custom">
+<div class="text-primary-container font-bold">Iron Sword</div>
+<div class="text-xs text-on-surface-variant">Attack: +6.0</div>
+<div class="text-xs text-[#55FF55]">Sharpness II</div>
+</div>
+</div>
+<div class="inventory-slot pixel-border-slot flex items-center justify-center cursor-pointer">
+<img class="w-10 h-10 object-contain" data-alt="A pixel art stack of 64 golden apples, glowing slightly, inventory item for a block-based crafting game." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhMihsdYtjzkQ6cCoVE2Ic5OuIO-sHI5DJ_ladQt1uupv09EeU0DiLYCh6IdwG5C8yp2XAta2N77_gbEGfT4j8PxN-dbgqbv0jBIloT_stSDWXihOBs7rnAi-6PlQdn-LFxAc4FzbZPHWF7R3mqb5Gl_gpabAY8eKR95jObdnWjTgGnUH6P8z8nRILTSzrvJmJh2BxG_Vm6dooYGClZcork_qYJgUkFDaNpnbgSVt1GZSV24_0XDy3YQ"/>
+<span class="absolute bottom-1 right-1 text-white font-headline-md text-xs mc-btn-shadow">64</span>
+<div class="tooltip-custom">
+<div class="text-[#FFD700] font-bold">Golden Apple</div>
+<div class="text-xs text-on-surface-variant">Regeneration II</div>
+</div>
+</div>
+<!-- Empty Slots (Repeat for grid) -->
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<!-- Row 2 -->
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<!-- Row 3 -->
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<!-- Row 4 (Hotbar Separator Effect) -->
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+<div class="inventory-slot pixel-border-slot"></div>
+</div>
+</div>
+<div class="mt-6 flex justify-end gap-4">
+<button class="pixel-border-raised bg-[#8B8B8B] px-8 py-3 font-headline-md text-sm mc-btn-shadow hover:bg-[#BDBDBD] transition-all">
+                            RESET KIT
+                        </button>
+<button class="pixel-border-raised bg-primary-container text-on-primary-container px-8 py-3 font-headline-md text-sm mc-btn-shadow hover:brightness-110 active:scale-95 transition-all">
+                            SAVE CONFIG
+                        </button>
+</div>
+</section>
+<!-- Status Cards (Decorative / Info) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-block-md">
+<div class="pixel-border-sunken bg-black/40 p-4 flex flex-col items-center">
+<span class="text-xs font-label-md text-on-surface-variant uppercase">CPU Usage</span>
+<span class="font-headline-md text-primary-container">12%</span>
+</div>
+<div class="pixel-border-sunken bg-black/40 p-4 flex flex-col items-center">
+<span class="text-xs font-label-md text-on-surface-variant uppercase">Memory</span>
+<span class="font-headline-md text-primary-container">4.2GB</span>
+</div>
+<div class="pixel-border-sunken bg-black/40 p-4 flex flex-col items-center">
+<span class="text-xs font-label-md text-on-surface-variant uppercase">TPS</span>
+<span class="font-headline-md text-primary-container">20.0</span>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Floating Action Button (Only on Mobile/Tablet) -->
+<button class="md:hidden fixed bottom-6 right-6 w-16 h-16 pixel-border-raised bg-primary-container text-on-primary-container flex items-center justify-center z-50 mc-btn-shadow active:scale-90">
+<span class="material-symbols-outlined" data-icon="save" style="font-variation-settings: 'FILL' 1;">save</span>
+</button>
+<script>
+        function toggleSwitch(btn) {
+            const state = btn.getAttribute('data-state');
+            if (state === 'on') {
+                btn.setAttribute('data-state', 'off');
+                btn.innerText = 'OFF';
+                btn.style.color = '#FF5555';
+            } else {
+                btn.setAttribute('data-state', 'on');
+                btn.innerText = 'ON';
+                btn.style.color = '#55FF55';
+            }
+        }
+
+        // Add some interaction sounds or feel
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                // Subtle visual feedback for "pressed" state beyond CSS if needed
+            });
+        });
+    </script>
+</body></html>

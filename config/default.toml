@@ -1,0 +1,37 @@
+[server]
+address = "localhost"
+port = 25565
+auto_reconnect = true
+
+[bot]
+username = "MineMate"
+permission_mode = "Player"
+
+[ai]
+api_key = ""
+model = "meta/llama-3.3-70b-instruct"
+temperature = 0.7
+max_tokens = 1024
+
+[automation]
+auto_sleep = true
+auto_eat = true
+auto_reconnect = true
+welcome_messages = true
+starter_kit_on_respawn = true
+
+[[starter_kit]]
+item = "diamond_sword"
+count = 1
+
+[[starter_kit]]
+item = "diamond_pickaxe"
+count = 1
+
+[[starter_kit]]
+item = "diamond_axe"
+count = 1
+
+[[starter_kit]]
+item = "cooked_beef"
+count = 64

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BotControl v1.0 - Admin GUI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Inter:wght@400;700&amp;family=VT323&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-low": "#1b1b1b",
+                    "background": "#131313",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-primary-fixed-variant": "#005309",
+                    "outline-variant": "#3c4b38",
+                    "on-tertiary-fixed": "#410005",
+                    "on-error-container": "#ffdad6",
+                    "surface-container": "#202020",
+                    "on-secondary-container": "#b5b5b5",
+                    "inverse-surface": "#e5e2e1",
+                    "on-primary": "#003a04",
+                    "tertiary": "#fffbff",
+                    "surface-container-high": "#2a2a2a",
+                    "surface-container-highest": "#353535",
+                    "tertiary-container": "#ffd6d3",
+                    "surface-dim": "#131313",
+                    "tertiary-fixed-dim": "#ffb3ae",
+                    "on-secondary": "#2f3031",
+                    "surface-bright": "#393939",
+                    "on-background": "#e5e2e1",
+                    "secondary": "#c7c6c6",
+                    "primary-fixed-dim": "#33e43d",
+                    "secondary-fixed-dim": "#c7c6c6",
+                    "on-primary-container": "#007311",
+                    "on-surface": "#e5e2e1",
+                    "surface-variant": "#353535",
+                    "primary": "#f6ffef",
+                    "on-surface-variant": "#bbcbb3",
+                    "secondary-container": "#464747",
+                    "primary-container": "#55ff55",
+                    "primary-fixed": "#74ff6b",
+                    "on-tertiary-container": "#bd242c",
+                    "secondary-fixed": "#e3e2e2",
+                    "surface-tint": "#33e43d",
+                    "tertiary-fixed": "#ffdad7",
+                    "on-tertiary-fixed-variant": "#930016",
+                    "on-primary-fixed": "#002202",
+                    "on-secondary-fixed-variant": "#464747",
+                    "surface": "#131313",
+                    "inverse-on-surface": "#303030",
+                    "on-secondary-fixed": "#1b1c1c",
+                    "outline": "#86957f",
+                    "on-tertiary": "#68000c",
+                    "on-error": "#690005",
+                    "error-container": "#93000a",
+                    "inverse-primary": "#006e10",
+                    "error": "#ffb4ab"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "block-md": "16px",
+                    "pixel-unit": "4px",
+                    "block-sm": "8px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "40px",
+                    "block-lg": "32px"
+            },
+            "fontFamily": {
+                    "pixel": ["VT323", "monospace"],
+                    "headline-md": ["Space Mono"],
+                    "headline-lg-mobile": ["Space Mono"],
+                    "headline-xl": ["Space Mono"],
+                    "label-md": ["Space Mono"],
+                    "headline-lg": ["Space Mono"],
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "headline-xl": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.05em", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "1.0", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #131313;
+            /* Subtle stone texture effect using CSS gradients */
+            background-image: 
+                radial-gradient(circle at 2px 2px, #1d1d1d 1px, transparent 0),
+                linear-gradient(45deg, #181818 25%, transparent 25%, transparent 75%, #181818 75%, #181818),
+                linear-gradient(45deg, #181818 25%, transparent 25%, transparent 75%, #181818 75%, #181818);
+            background-size: 8px 8px, 16px 16px, 16px 16px;
+            background-position: 0 0, 0 0, 8px 8px;
+            image-rendering: pixelated;
+        }
+
+        .mc-bevel-out {
+            border-top: 4px solid #BDBDBD;
+            border-left: 4px solid #BDBDBD;
+            border-right: 4px solid #404040;
+            border-bottom: 4px solid #404040;
+        }
+
+        .mc-bevel-in {
+            border-top: 4px solid #000000;
+            border-left: 4px solid #000000;
+            border-right: 4px solid #8B8B8B;
+            border-bottom: 4px solid #8B8B8B;
+        }
+
+        .mc-slot-active {
+            border: 4px solid #FFFFFF;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .pixel-text-shadow {
+            text-shadow: 2px 2px 0px rgba(0,0,0,1);
+        }
+
+        .experience-bar-segment {
+            box-shadow: inset 1px 1px 0px rgba(255,255,255,0.2);
+        }
+
+        /* Material Symbol custom sizing */
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .heart-icon { color: #FF5555; }
+        .food-icon { color: #AA5500; }
+        
+        .tab-menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+    </style>
+</head>
+<body class="text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full bg-surface/80 backdrop-blur-xl z-50 flex justify-between items-center px-gutter h-16 w-full border-b-4 border-outline-variant">
+<div class="flex items-center gap-block-sm">
+<h1 class="font-headline-md text-headline-md text-primary-fixed drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">BotControl v1.0</h1>
+<div class="hidden md:flex gap-4 ml-8">
+<span class="text-primary-container font-bold px-2 py-1 bg-surface-container-high mc-bevel-out text-label-md">Status: Online</span>
+<span class="text-on-surface-variant font-bold px-2 py-1 text-label-md">IP: play.server.com</span>
+</div>
+</div>
+<div class="flex gap-4">
+<button class="material-symbols-outlined text-primary-fixed p-2 hover:bg-surface-container-high transition-transform active:translate-y-0.5">settings</button>
+<button class="material-symbols-outlined text-primary-fixed p-2 hover:bg-surface-container-high transition-transform active:translate-y-0.5">power_settings_new</button>
+</div>
+</header>
+<div class="flex h-screen pt-16">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col gap-block-sm p-block-md h-full h-screen w-64 border-r-4 border-outline-variant bg-surface-container-low">
+<div class="mb-block-lg">
+<h2 class="font-headline-md text-headline-md text-primary-fixed">Admin GUI</h2>
+<p class="font-label-md text-label-md text-on-surface-variant opacity-70">Voxel Engine v2</p>
+</div>
+<nav class="flex flex-col gap-2 flex-grow">
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container border-4 border-t-outline-variant border-l-outline-variant border-r-surface-container-highest border-b-surface-container-highest translate-y-0.5 active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-md text-label-md">Logs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Players</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="font-label-md text-label-md">Console</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">extension</span>
+<span class="font-label-md text-label-md">Plugins</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-2">
+<button class="w-full py-3 bg-[#8B8B8B] mc-bevel-out text-white font-headline-md hover:border-primary-container active:translate-y-1">
+                    Sync Server
+                </button>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-primary-fixed" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-grow p-block-md md:p-block-lg overflow-y-auto">
+<div class="max-w-6xl mx-auto flex flex-col gap-block-lg">
+<!-- HUD Section (Health and Hunger) -->
+<div class="flex flex-wrap justify-between items-end gap-gutter p-4 bg-black/40 backdrop-blur-md mc-bevel-in">
+<div class="flex flex-col gap-2">
+<div class="flex gap-1">
+<!-- Health Hearts -->
+<span class="material-symbols-outlined heart-icon" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="material-symbols-outlined heart-icon" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="material-symbols-outlined heart-icon" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="material-symbols-outlined heart-icon" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="material-symbols-outlined heart-icon" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="material-symbols-outlined heart-icon" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="material-symbols-outlined heart-icon" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="material-symbols-outlined heart-icon" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="material-symbols-outlined heart-icon" style="font-variation-settings: 'FILL' 0;">favorite</span>
+<span class="material-symbols-outlined heart-icon" style="font-variation-settings: 'FILL' 0;">favorite</span>
+</div>
+<!-- Experience Bar -->
+<div class="w-full md:w-64 h-4 bg-black flex overflow-hidden">
+<div class="h-full bg-primary-container experience-bar-segment" style="width: 70%"></div>
+<div class="h-full w-[2px] bg-black"></div>
+<div class="h-full w-[2px] bg-black ml-[10%]"></div>
+<div class="h-full w-[2px] bg-black ml-[10%]"></div>
+<div class="h-full w-[2px] bg-black ml-[10%]"></div>
+</div>
+</div>
+<div class="flex flex-col gap-2 items-end">
+<div class="flex gap-1">
+<!-- Hunger Icons -->
+<span class="material-symbols-outlined food-icon" style="font-variation-settings: 'FILL' 1;">nutrition</span>
+<span class="material-symbols-outlined food-icon" style="font-variation-settings: 'FILL' 1;">nutrition</span>
+<span class="material-symbols-outlined food-icon" style="font-variation-settings: 'FILL' 1;">nutrition</span>
+<span class="material-symbols-outlined food-icon" style="font-variation-settings: 'FILL' 1;">nutrition</span>
+<span class="material-symbols-outlined food-icon" style="font-variation-settings: 'FILL' 1;">nutrition</span>
+<span class="material-symbols-outlined food-icon" style="font-variation-settings: 'FILL' 0;">nutrition</span>
+</div>
+<span class="font-pixel text-2xl text-primary-fixed pixel-text-shadow">Level 42</span>
+</div>
+</div>
+<!-- Bento Grid Content -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-block-lg">
+<!-- Player List (TAB Menu style) -->
+<section class="lg:col-span-8 bg-black/60 p-block-md mc-bevel-in min-h-[400px]">
+<div class="flex justify-between items-center mb-4 border-b-2 border-outline-variant pb-2">
+<h3 class="font-pixel text-3xl pixel-text-shadow flex items-center gap-2">
+<span class="material-symbols-outlined">group</span>
+                                PLAYER LIST [12/50]
+                            </h3>
+<span class="text-on-surface-variant font-label-md">Sort by: Rank</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+<!-- Player Card -->
+<div class="tab-menu-item flex items-center justify-between p-3 bg-surface-container/50 mc-bevel-out cursor-pointer transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-surface-container-highest border-2 border-primary-fixed overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A pixelated 8-bit character head with bright green eyes and a brown hood, designed in the classic sandbox game aesthetic with distinct square blocks and high contrast shading. The lighting is direct and creates a sharp, blocky depth effect." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXsYZV8sy42as-bBMA5QBGcfJx3whg1JypGa4V8vLyo4jaWx8nDQzG0o66iYONoCNqvAgGhE8hsiVtgW6ewjRFWJ407cyFcLrY0a5qA97vDkQ4wYzeCL4In1izQf5uYIw3ntma2KBi4e04t5kNzVMizHNEhdFe0nCz2Q_q6jXTw23nh08T3NKW-rkvkq74hMujxkJBBF-zoqdhGMv8wBnfKUejXE-KqlxXiC819H0KuNhyLOjP-SxyXQ"/>
+</div>
+<div>
+<div class="font-pixel text-xl pixel-text-shadow text-primary-fixed">Admin_Steve</div>
+<div class="text-[10px] uppercase font-bold tracking-widest text-primary-container">Owner</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-primary-container font-pixel">12ms</span>
+<span class="material-symbols-outlined text-primary-container text-sm">signal_cellular_alt</span>
+</div>
+</div>
+<!-- Player Card -->
+<div class="tab-menu-item flex items-center justify-between p-3 bg-surface-container/50 mc-bevel-out cursor-pointer transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-surface-container-highest border-2 border-outline overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A blocky voxel-style avatar face of a player with blond hair and a blue crown, rendered with sharp edges and visible pixels. The colors are vibrant and saturated, fitting a nostalgic sandbox game UI theme. The expression is neutral and powerful." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkWZ9Xxi9dD2ERWbrKVmgho1t1gh6S68KWWbwcS5RRGUkS9rBayqxpTOLda3FNk54TSWnHJrxBBcHH_Tint4qi9uPwXcmvlFbUaNmOccz2K9b25RlLOn0wU3_fqpLnD7FcPm27McMu4dWoE0HFiD3eycBsYi5Weu1JY3s8cP44YAA40ciBRyqsvKmSFMfXTc7VY35OG6NVftPpw2xPi-nESj_f6gpAxfVSy3QTM9-TKKEc_IpCvc3u0g"/>
+</div>
+<div>
+<div class="font-pixel text-xl pixel-text-shadow">VoxelKnight</div>
+<div class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Player</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-on-surface-variant font-pixel">45ms</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">signal_cellular_alt_2_bar</span>
+</div>
+</div>
+<!-- More players -->
+<div class="tab-menu-item flex items-center justify-between p-3 bg-surface-container/50 mc-bevel-out cursor-pointer transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-surface-container-highest border-2 border-error overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A detailed pixel art avatar of a character wearing a dark iron helmet with a glowing red visor. The aesthetic is rugged and industrial, featuring heavy black outlines and a gritty stone-like texture. High-contrast lighting highlights the metallic surfaces of the blocky helmet." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAHT18ZSUIqQN9RFQh-V3yhCUYC7ougvnZPzeVbeM7-D8cEvP3hDwd3Zuv0X3nbD2GXvllLQzdrfylYko0vo2bdQrmbNZLw8H9jgQcNf3aIGFHOE8dGejtQSv7pSvQ_gKz9DBFXehWGedK2KJ8BdZIXDG1aXL5C_olvvL8vDaUIPVYJw6zhNzevYge9-oyMNIq9Xu3XBdRGG2Nly_1aFxUhaYfwpkHtVd6mfAy9TEY7Oh-xfpo7ww2Qw"/>
+</div>
+<div>
+<div class="font-pixel text-xl pixel-text-shadow text-error">ChaosGreifer</div>
+<div class="text-[10px] uppercase font-bold tracking-widest text-error">Banned Soon</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-error font-pixel">180ms</span>
+<span class="material-symbols-outlined text-error text-sm">signal_cellular_connected_no_internet_4_bar</span>
+</div>
+</div>
+<!-- Fill with more items -->
+<div class="tab-menu-item flex items-center justify-between p-3 bg-surface-container/50 mc-bevel-out opacity-60">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-surface-container-highest border-2 border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant">person</span>
+</div>
+<div class="font-pixel text-xl pixel-text-shadow text-on-surface-variant">Awaiting...</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Inventory Quick Actions (3x3 Grid) -->
+<section class="lg:col-span-4 flex flex-col gap-4">
+<div class="bg-surface-container p-block-md mc-bevel-out flex flex-col items-center">
+<h3 class="font-pixel text-2xl pixel-text-shadow mb-4 self-start">QUICK ACTIONS</h3>
+<div class="grid grid-cols-3 gap-2">
+<!-- Slot 1 -->
+<button class="w-16 h-16 bg-black mc-bevel-in flex items-center justify-center hover:bg-surface-container-highest group relative">
+<span class="material-symbols-outlined text-primary-fixed group-hover:scale-110 transition-transform">bolt</span>
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#330033] border-2 border-[#AA00AA] px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none z-10">
+                                        Boost Server
+                                    </div>
+</button>
+<!-- Slot 2 (Active) -->
+<button class="w-16 h-16 bg-black mc-slot-active flex items-center justify-center group relative">
+<span class="material-symbols-outlined text-primary-container">shield</span>
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#330033] border-2 border-[#AA00AA] px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none z-10">
+                                        Enable Whitelist
+                                    </div>
+</button>
+<!-- Slot 3 -->
+<button class="w-16 h-16 bg-black mc-bevel-in flex items-center justify-center hover:bg-surface-container-highest group relative">
+<span class="material-symbols-outlined text-on-surface-variant">cleaning_services</span>
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#330033] border-2 border-[#AA00AA] px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none z-10">
+                                        Clear Drops
+                                    </div>
+</button>
+<!-- Slot 4 -->
+<button class="w-16 h-16 bg-black mc-bevel-in flex items-center justify-center hover:bg-surface-container-highest group relative">
+<span class="material-symbols-outlined text-on-surface-variant">restart_alt</span>
+</button>
+<!-- Slot 5 -->
+<button class="w-16 h-16 bg-black mc-bevel-in flex items-center justify-center hover:bg-surface-container-highest group relative">
+<span class="material-symbols-outlined text-on-surface-variant">save</span>
+</button>
+<!-- Slot 6 -->
+<button class="w-16 h-16 bg-black mc-bevel-in flex items-center justify-center hover:bg-surface-container-highest group relative">
+<span class="material-symbols-outlined text-on-surface-variant">schedule</span>
+</button>
+<!-- Slot 7 -->
+<button class="w-16 h-16 bg-black mc-bevel-in flex items-center justify-center hover:bg-surface-container-highest group relative">
+<span class="material-symbols-outlined text-on-surface-variant">history</span>
+</button>
+<!-- Slot 8 -->
+<button class="w-16 h-16 bg-black mc-bevel-in flex items-center justify-center hover:bg-surface-container-highest group relative">
+<span class="material-symbols-outlined text-on-surface-variant">warning</span>
+</button>
+<!-- Slot 9 -->
+<button class="w-16 h-16 bg-black mc-bevel-in flex items-center justify-center hover:bg-surface-container-highest group relative">
+<span class="material-symbols-outlined text-error">delete_forever</span>
+</button>
+</div>
+</div>
+<!-- Mini Stats Card -->
+<div class="bg-surface-container p-block-md mc-bevel-out flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="font-pixel text-xl">CPU LOAD</span>
+<span class="font-pixel text-xl text-primary-container">14%</span>
+</div>
+<div class="w-full h-2 bg-black mc-bevel-in overflow-hidden">
+<div class="h-full bg-primary-container" style="width: 14%"></div>
+</div>
+<div class="flex justify-between items-center mt-2">
+<span class="font-pixel text-xl">RAM USAGE</span>
+<span class="font-pixel text-xl text-primary-fixed">2.4GB</span>
+</div>
+<div class="w-full h-2 bg-black mc-bevel-in overflow-hidden">
+<div class="h-full bg-primary-fixed" style="width: 45%"></div>
+</div>
+</div>
+</section>
+</div>
+<!-- Event Log (Console Style) -->
+<section class="bg-black p-block-md mc-bevel-in relative min-h-[200px]">
+<div class="flex justify-between items-center mb-4 border-b-2 border-surface-container-highest pb-2">
+<h3 class="font-pixel text-2xl pixel-text-shadow text-primary-fixed">EVENT_LOG_V2</h3>
+<span class="text-[10px] text-on-surface-variant animate-pulse">● LIVE STREAMING</span>
+</div>
+<div class="font-pixel text-lg leading-relaxed flex flex-col gap-1 overflow-y-auto max-h-48 scrollbar-hide">
+<p class="text-on-surface-variant"><span class="text-primary-container">[14:22:01]</span> <span class="text-primary-fixed">Server</span>: Chunk [32, -12] loaded successfully.</p>
+<p class="text-on-surface-variant"><span class="text-primary-container">[14:22:05]</span> <span class="text-white">Admin_Steve</span> joined the game.</p>
+<p class="text-on-surface-variant"><span class="text-primary-container">[14:22:12]</span> <span class="text-error">Warning</span>: High entity count in sector D4.</p>
+<p class="text-on-surface-variant"><span class="text-primary-container">[14:23:45]</span> <span class="text-white">VoxelKnight</span>: "Hey everyone! Let's build the portal today!"</p>
+<p class="text-on-surface-variant"><span class="text-primary-container">[14:24:00]</span> <span class="text-[#55FF55]">AutoSave</span>: World state saved to cluster_01.</p>
+<p class="text-on-surface-variant"><span class="text-primary-container">[14:24:15]</span> <span class="text-error">ChaosGreifer</span> tried to place TNT at [102, 64, -20] - ACTION BLOCKED.</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-primary-container animate-bounce">_</span>
+<input class="bg-transparent border-none focus:ring-0 w-full p-0 font-pixel text-lg placeholder:text-surface-container-highest" placeholder="Type a command..." type="text"/>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- Mobile Bottom NavBar (Visible on small screens) -->
+<nav class="md:hidden fixed bottom-0 w-full bg-surface-container p-2 flex justify-around items-center mc-bevel-out z-50">
+<button class="flex flex-col items-center gap-1 text-primary-container">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-bold">DASH</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">group</span>
+<span class="text-[10px] font-bold">PLAYERS</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">terminal</span>
+<span class="text-[10px] font-bold">LOGS</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold">CONFIG</span>
+</button>
+</nav>
+<script>
+        // Micro-interaction: Block cursor blink for input
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.previousElementSibling.classList.remove('hidden');
+            });
+            input.addEventListener('blur', () => {
+                if(!input.value) input.previousElementSibling.classList.add('hidden');
+            });
+        });
+
+        // Hover Tooltip Simulation
+        const slots = document.querySelectorAll('.mc-bevel-in button, .mc-slot-active');
+        slots.forEach(slot => {
+            slot.addEventListener('mouseenter', () => {
+                const tooltip = slot.querySelector('div');
+                if(tooltip) tooltip.classList.remove('opacity-0');
+            });
+            slot.addEventListener('mouseleave', () => {
+                const tooltip = slot.querySelector('div');
+                if(tooltip) tooltip.classList.add('opacity-0');
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BotControl v1.0 - Task Queue</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Inter:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @layer base {
+            body {
+                @apply bg-background text-on-surface font-body-md;
+                image-rendering: pixelated;
+            }
+        }
+
+        /* Pixel Brutalist Shadows and Insets */
+        .gui-raised {
+            box-shadow: inset 4px 4px 0px #BDBDBD, inset -4px -4px 0px #404040;
+        }
+        .gui-sunken {
+            box-shadow: inset 4px 4px 0px #000000, inset -4px -4px 0px #8B8B8B;
+        }
+        .gui-slot {
+            box-shadow: inset 4px 4px 0px #000000, inset -2px -2px 0px #404040;
+        }
+        
+        /* Minecraft-style button */
+        .mc-button {
+            position: relative;
+            background-color: #8B8B8B;
+            border: 4px solid #000000;
+            box-shadow: inset 4px 4px 0px #BDBDBD, inset -4px -4px 0px #404040;
+            transition: all 0.1s;
+        }
+        .mc-button:hover {
+            background-color: #8B8B8B;
+            outline: 4px solid #55FF55;
+            z-index: 10;
+        }
+        .mc-button:active {
+            transform: translateY(2px);
+            box-shadow: inset 4px 4px 0px #404040, inset -4px -4px 0px #BDBDBD;
+        }
+
+        .tooltip-mc {
+            background: #1D1D1DCC;
+            border: 4px solid #5d00ff;
+            backdrop-filter: blur(10px);
+        }
+
+        .pixel-border {
+            border: 4px solid #3c4b38;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-low": "#1b1b1b",
+                      "background": "#131313",
+                      "surface-container-lowest": "#0e0e0e",
+                      "on-primary-fixed-variant": "#005309",
+                      "outline-variant": "#3c4b38",
+                      "on-tertiary-fixed": "#410005",
+                      "on-error-container": "#ffdad6",
+                      "surface-container": "#202020",
+                      "on-secondary-container": "#b5b5b5",
+                      "inverse-surface": "#e5e2e1",
+                      "on-primary": "#003a04",
+                      "tertiary": "#fffbff",
+                      "surface-container-high": "#2a2a2a",
+                      "surface-container-highest": "#353535",
+                      "tertiary-container": "#ffd6d3",
+                      "surface-dim": "#131313",
+                      "tertiary-fixed-dim": "#ffb3ae",
+                      "on-secondary": "#2f3031",
+                      "surface-bright": "#393939",
+                      "on-background": "#e5e2e1",
+                      "secondary": "#c7c6c6",
+                      "primary-fixed-dim": "#33e43d",
+                      "secondary-fixed-dim": "#c7c6c6",
+                      "on-primary-container": "#007311",
+                      "on-surface": "#e5e2e1",
+                      "surface-variant": "#353535",
+                      "primary": "#f6ffef",
+                      "on-surface-variant": "#bbcbb3",
+                      "secondary-container": "#464747",
+                      "primary-container": "#55ff55",
+                      "primary-fixed": "#74ff6b",
+                      "on-tertiary-container": "#bd242c",
+                      "secondary-fixed": "#e3e2e2",
+                      "surface-tint": "#33e43d",
+                      "tertiary-fixed": "#ffdad7",
+                      "on-tertiary-fixed-variant": "#930016",
+                      "on-primary-fixed": "#002202",
+                      "on-secondary-fixed-variant": "#464747",
+                      "surface": "#131313",
+                      "inverse-on-surface": "#303030",
+                      "on-secondary-fixed": "#1b1c1c",
+                      "outline": "#86957f",
+                      "on-tertiary": "#68000c",
+                      "on-error": "#690005",
+                      "error-container": "#93000a",
+                      "inverse-primary": "#006e10",
+                      "error": "#ffb4ab"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "block-md": "16px",
+                      "pixel-unit": "4px",
+                      "block-sm": "8px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "40px",
+                      "block-lg": "32px"
+              },
+              "fontFamily": {
+                      "headline-md": ["Space Mono"],
+                      "label-md": ["Space Mono"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-md": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                      "label-md": ["14px", {"lineHeight": "1.0", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="overflow-hidden h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full bg-surface/80 backdrop-blur-xl border-b-4 border-outline-variant flex justify-between items-center px-gutter h-16 w-full z-50">
+<div class="flex items-center gap-block-md">
+<span class="font-headline-md text-headline-md text-primary-fixed drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">BotControl v1.0</span>
+</div>
+<div class="hidden md:flex items-center gap-block-lg">
+<span class="text-on-surface-variant font-label-md text-label-md">Status: Online</span>
+<span class="text-on-surface-variant font-label-md text-label-md">IP: play.server.com</span>
+</div>
+<div class="flex items-center gap-block-sm">
+<button class="p-2 hover:bg-surface-container-high active:translate-y-0.5 transition-transform">
+<span class="material-symbols-outlined text-primary-fixed">settings</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high active:translate-y-0.5 transition-transform">
+<span class="material-symbols-outlined text-primary-fixed">power_settings_new</span>
+</button>
+</div>
+</header>
+<div class="flex flex-1 pt-16 overflow-hidden">
+<!-- SideNavBar -->
+<nav class="h-screen w-64 border-r-4 border-outline-variant flex flex-col gap-block-sm p-block-md h-full bg-surface-container-low shrink-0">
+<div class="mb-block-lg">
+<div class="flex items-center gap-block-sm mb-2">
+<div class="w-10 h-10 gui-raised bg-surface-container-highest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A pixel-art style character head icon resembling a gaming bot or mechanical pilot. The style is 16-bit, vibrant, with heavy black outlines and high-contrast shading. The robot has glowing emerald eyes and a metallic charcoal gray helmet. Set against a dark, industrial UI background with neon green highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsNYKl3n5R41GCrbVP1jUqYu2GB0vGiw2PMa3DyzN4qiF2z9Nxo2cXSUpAzUVla_15rKj5f9qpI-d5CMM8jyWbNRVAreNJAHljnvy4vPVFMA9E-s4W3BDN0ZQMwzLfUseTqwDbJDbk4vNGJrX4omfX1eji26k8ZyNdUz5fWGGAscz2UdHWcryfZ8fFjoXVDkcAZq0Q6udgc4_3Nd6Gf2FtoXrAjLkA9m3WvXAHVe6cg30iPAX6h6Mp8A"/>
+</div>
+<div>
+<h2 class="font-headline-md text-[16px] text-primary-fixed leading-none">Admin GUI</h2>
+<p class="font-label-md text-[10px] text-on-surface-variant">Voxel Engine v2</p>
+</div>
+</div>
+<button class="mc-button w-full py-2 font-label-md text-label-md text-white uppercase tracking-wider">Sync Server</button>
+</div>
+<div class="flex flex-col gap-2">
+<a class="flex items-center gap-3 p-3 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 p-3 bg-secondary-container text-on-secondary-container border-4 border-t-outline-variant border-l-outline-variant border-r-surface-container-highest border-b-surface-container-highest translate-y-0.5 hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-md text-label-md">Logs</span>
+</a>
+<a class="flex items-center gap-3 p-3 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Players</span>
+</a>
+<a class="flex items-center gap-3 p-3 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="font-label-md text-label-md">Console</span>
+</a>
+<a class="flex items-center gap-3 p-3 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">extension</span>
+<span class="font-label-md text-label-md">Plugins</span>
+</a>
+</div>
+<div class="mt-auto pt-block-md border-t-4 border-outline-variant">
+<a class="flex items-center gap-3 p-3 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content (Canvas) -->
+<main class="flex-1 p-block-lg overflow-y-auto bg-background relative">
+<!-- Background Shader/Atmosphere -->
+
+<div class="max-w-4xl mx-auto flex flex-col gap-block-lg relative z-10">
+<!-- Header & Action -->
+<div class="flex justify-between items-end border-b-4 border-outline-variant pb-block-md">
+<div>
+<h1 class="font-headline-md text-headline-md text-on-surface drop-shadow-[2px_2px_0px_rgba(0,0,0,0.5)]">ACTIVE_TASK_QUEUE</h1>
+<p class="font-label-md text-on-surface-variant">Manage bot operations and automation pipelines</p>
+</div>
+<button class="mc-button px-block-lg py-3 font-label-md text-label-md text-white">
+                        ADD TASK
+                    </button>
+</div>
+<!-- Task Stats (Bento Grid Style) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="gui-sunken bg-surface-container p-4 flex flex-col gap-2">
+<span class="font-label-md text-[10px] text-primary-fixed">TASKS_TOTAL</span>
+<span class="font-headline-md text-headline-md">12</span>
+</div>
+<div class="gui-sunken bg-surface-container p-4 flex flex-col gap-2">
+<span class="font-label-md text-[10px] text-primary-container">TASKS_COMPLETED</span>
+<span class="font-headline-md text-headline-md text-primary-container">48</span>
+</div>
+<div class="gui-sunken bg-surface-container p-4 flex flex-col gap-2 border-l-4 border-error-container">
+<span class="font-label-md text-[10px] text-error">FAILED_TASKS</span>
+<span class="font-headline-md text-headline-md text-error">03</span>
+</div>
+<div class="gui-sunken bg-surface-container p-4 flex flex-col gap-2">
+<span class="font-label-md text-[10px] text-on-surface-variant">AVG_LATENCY</span>
+<span class="font-headline-md text-headline-md">12ms</span>
+</div>
+</div>
+<!-- Inventory Style Task Grid -->
+<div class="gui-sunken bg-[#1D1D1D] p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Task Slot 1 -->
+<div class="group relative gui-slot bg-surface-container-lowest p-4 transition-all hover:bg-surface-container-high cursor-pointer">
+<div class="flex justify-between items-start mb-4">
+<div class="gui-raised bg-surface-container-high w-10 h-10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary-fixed">terrain</span>
+</div>
+<span class="font-label-md text-[10px] text-on-surface-variant uppercase">Job #4012</span>
+</div>
+<h3 class="font-label-md text-white mb-2">Automated Mining</h3>
+<p class="text-[12px] text-on-surface-variant mb-4 font-body-md line-clamp-2">Clearing Chunk (12, -44) for subterranean storage expansion.</p>
+<!-- Durability/Progress Bar -->
+<div class="space-y-1">
+<div class="flex justify-between font-label-md text-[10px]">
+<span class="text-primary-container">PROGRESS</span>
+<span class="text-white">82%</span>
+</div>
+<div class="h-4 bg-black p-[2px] gui-sunken">
+<div class="h-full bg-[#55FF55] w-[82%] relative overflow-hidden">
+<div class="absolute inset-0 flex">
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Tooltip on Hover -->
+<div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+<div class="tooltip-mc p-4 min-w-[200px] shadow-2xl">
+<h4 class="text-[#f5afff] font-headline-md text-[16px]">Enchanted Operation</h4>
+<p class="text-[#aaffaa] text-[12px] font-label-md mt-1">Efficiency IV</p>
+<p class="text-[#aaffaa] text-[12px] font-label-md">Unbreaking III</p>
+<hr class="border-[#5d00ff] my-2"/>
+<p class="text-white text-[12px]">Status: Active &amp; Harvesting</p>
+</div>
+</div>
+</div>
+<!-- Task Slot 2 -->
+<div class="group relative gui-slot bg-surface-container-lowest p-4 transition-all hover:bg-surface-container-high cursor-pointer">
+<div class="flex justify-between items-start mb-4">
+<div class="gui-raised bg-surface-container-high w-10 h-10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary-fixed">agriculture</span>
+</div>
+<span class="font-label-md text-[10px] text-on-surface-variant uppercase">Job #4013</span>
+</div>
+<h3 class="font-label-md text-white mb-2">Wheat Harvest</h3>
+<p class="text-[12px] text-on-surface-variant mb-4 font-body-md line-clamp-2">Maintaining North-side crop yields and automatic replanting.</p>
+<div class="space-y-1">
+<div class="flex justify-between font-label-md text-[10px]">
+<span class="text-primary-container">PROGRESS</span>
+<span class="text-white">45%</span>
+</div>
+<div class="h-4 bg-black p-[2px] gui-sunken">
+<div class="h-full bg-yellow-400 w-[45%] relative overflow-hidden">
+<div class="absolute inset-0 flex">
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+<div class="tooltip-mc p-4 min-w-[200px] shadow-2xl">
+<h4 class="text-[#f5afff] font-headline-md text-[16px]">Farm Logic</h4>
+<p class="text-white text-[12px] mt-2">Next Cycle: 14:00 GMT</p>
+<p class="text-white text-[12px]">Yield Estimate: 14 stacks</p>
+</div>
+</div>
+</div>
+<!-- Task Slot 3 (Critical/Dying Progress) -->
+<div class="group relative gui-slot bg-surface-container-lowest p-4 transition-all hover:bg-surface-container-high cursor-pointer">
+<div class="flex justify-between items-start mb-4">
+<div class="gui-raised bg-surface-container-high w-10 h-10 flex items-center justify-center">
+<span class="material-symbols-outlined text-error">warning</span>
+</div>
+<span class="font-label-md text-[10px] text-on-surface-variant uppercase">Job #4015</span>
+</div>
+<h3 class="font-label-md text-white mb-2">Server Defenses</h3>
+<p class="text-[12px] text-on-surface-variant mb-4 font-body-md line-clamp-2">Perimeter patrol and hostile entity suppression.</p>
+<div class="space-y-1">
+<div class="flex justify-between font-label-md text-[10px]">
+<span class="text-error">DURABILITY</span>
+<span class="text-error">12%</span>
+</div>
+<div class="h-4 bg-black p-[2px] gui-sunken">
+<div class="h-full bg-red-600 w-[12%] relative overflow-hidden">
+<div class="absolute inset-0 flex">
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+<div class="w-[10%] border-r-2 border-black/30"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+<div class="tooltip-mc p-4 min-w-[200px] shadow-2xl">
+<h4 class="text-error font-headline-md text-[16px]">CRITICAL ERROR</h4>
+<p class="text-white text-[12px] mt-2">Bot health low. Armor broken.</p>
+<p class="text-white text-[12px]">Location: Dark Forest</p>
+</div>
+</div>
+</div>
+<!-- Empty Slots for Atmosphere -->
+<div class="gui-slot bg-surface-container-lowest h-40 opacity-20 border-dashed border-2 border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline">add</span>
+</div>
+<div class="gui-slot bg-surface-container-lowest h-40 opacity-10 border-dashed border-2 border-outline-variant"></div>
+<div class="gui-slot bg-surface-container-lowest h-40 opacity-10 border-dashed border-2 border-outline-variant"></div>
+</div>
+<!-- Log Terminal Section -->
+<div class="gui-sunken bg-black p-4 font-label-md text-primary-fixed-dim text-[12px] h-48 overflow-y-auto">
+<p class="mb-1"><span class="text-on-surface-variant">[14:02:11]</span> Task Manager: Mining job #4012 started successfully.</p>
+<p class="mb-1"><span class="text-on-surface-variant">[14:03:45]</span> Alert: Bot #09 encountering terrain resistance.</p>
+<p class="mb-1 text-primary-container"><span class="text-on-surface-variant">[14:05:00]</span> Success: 5 stacks of Iron Ore deposited.</p>
+<p class="mb-1 text-error"><span class="text-on-surface-variant">[14:07:22]</span> Warning: Server Defenses bot taking heavy damage.</p>
+<p class="mb-1 animate-pulse">_</p>
+</div>
+</div>
+</main>
+</div>
+<script>
+        // Micro-interactions for GUI feeling
+        document.querySelectorAll('.mc-button').forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                // Potential for sound effects if desired
+            });
+        });
+
+        // Simulating progress bar movement for visuals
+        const progressBars = document.querySelectorAll('.h-full');
+        setInterval(() => {
+            progressBars.forEach(bar => {
+                if(bar.classList.contains('bg-[#55FF55]')) {
+                    let currentWidth = parseFloat(bar.style.width) || 82;
+                    if(currentWidth < 100) {
+                        bar.style.width = (currentWidth + 0.1) + '%';
+                        bar.parentElement.previousElementSibling.querySelector('.text-white').innerText = Math.round(currentWidth) + '%';
+                    }
+                }
+            });
+        }, 2000);
+    </script>
+</body></html>

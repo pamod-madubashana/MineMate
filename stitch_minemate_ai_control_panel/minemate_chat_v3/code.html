@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BotControl v1.0 - Server Chat</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Inter:wght@400;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Space+Mono:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-low": "#1b1b1b",
+                    "background": "#131313",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-primary-fixed-variant": "#005309",
+                    "outline-variant": "#3c4b38",
+                    "on-tertiary-fixed": "#410005",
+                    "on-error-container": "#ffdad6",
+                    "surface-container": "#202020",
+                    "on-secondary-container": "#b5b5b5",
+                    "inverse-surface": "#e5e2e1",
+                    "on-primary": "#003a04",
+                    "tertiary": "#fffbff",
+                    "surface-container-high": "#2a2a2a",
+                    "surface-container-highest": "#353535",
+                    "tertiary-container": "#ffd6d3",
+                    "surface-dim": "#131313",
+                    "tertiary-fixed-dim": "#ffb3ae",
+                    "on-secondary": "#2f3031",
+                    "surface-bright": "#393939",
+                    "on-background": "#e5e2e1",
+                    "secondary": "#c7c6c6",
+                    "primary-fixed-dim": "#33e43d",
+                    "secondary-fixed-dim": "#c7c6c6",
+                    "on-primary-container": "#007311",
+                    "on-surface": "#e5e2e1",
+                    "surface-variant": "#353535",
+                    "primary": "#f6ffef",
+                    "on-surface-variant": "#bbcbb3",
+                    "secondary-container": "#464747",
+                    "primary-container": "#55ff55",
+                    "primary-fixed": "#74ff6b",
+                    "on-tertiary-container": "#bd242c",
+                    "secondary-fixed": "#e3e2e2",
+                    "surface-tint": "#33e43d",
+                    "tertiary-fixed": "#ffdad7",
+                    "on-tertiary-fixed-variant": "#930016",
+                    "on-primary-fixed": "#002202",
+                    "on-secondary-fixed-variant": "#464747",
+                    "surface": "#131313",
+                    "inverse-on-surface": "#303030",
+                    "on-secondary-fixed": "#1b1c1c",
+                    "outline": "#86957f",
+                    "on-tertiary": "#68000c",
+                    "on-error": "#690005",
+                    "error-container": "#93000a",
+                    "inverse-primary": "#006e10",
+                    "error": "#ffb4ab"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "pixel-unit": "4px",
+                    "block-md": "16px",
+                    "block-sm": "8px",
+                    "block-lg": "32px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Space Mono"],
+                    "label-md": ["Space Mono"],
+                    "body-md": ["Inter"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .mc-shadow {
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.85);
+        }
+        .mc-inset {
+            border-top: 4px solid #000000;
+            border-left: 4px solid #000000;
+            border-right: 4px solid #8B8B8B;
+            border-bottom: 4px solid #8B8B8B;
+        }
+        .mc-outset {
+            border-top: 4px solid #BDBDBD;
+            border-left: 4px solid #BDBDBD;
+            border-right: 4px solid #404040;
+            border-bottom: 4px solid #404040;
+        }
+        .mc-outset:active {
+            border-top: 4px solid #404040;
+            border-left: 4px solid #404040;
+            border-right: 4px solid #BDBDBD;
+            border-bottom: 4px solid #BDBDBD;
+            transform: translateY(2px);
+        }
+        /* Minecraft Color Codes Emulation */
+        .color-a { color: #55FF55; } /* Green */
+        .color-c { color: #FF5555; } /* Red */
+        .color-b { color: #55FFFF; } /* Aqua */
+        .color-e { color: #FFFF55; } /* Yellow */
+        .color-f { color: #FFFFFF; } /* White */
+        .color-7 { color: #AAAAAA; } /* Gray */
+        
+        .chat-scroll::-webkit-scrollbar { width: 8px; }
+        .chat-scroll::-webkit-scrollbar-track { background: #1D1D1D; border-left: 2px solid #404040; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: #8B8B8B; border: 2px solid #1D1D1D; }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex overflow-hidden">
+<!-- SideNavBar (from JSON) -->
+<aside class="hidden md:flex flex-col gap-block-sm p-block-md h-screen w-64 border-r-4 border-outline-variant bg-surface-container-low shrink-0">
+<div class="mb-block-lg">
+<h1 class="font-headline-md text-headline-md text-primary-fixed">Admin GUI</h1>
+<p class="font-label-md text-label-md opacity-70">Voxel Engine v2</p>
+</div>
+<nav class="flex-1 flex flex-col gap-2">
+<!-- Active: Console (closest match for Chat Log task) -->
+<a class="flex items-center gap-3 px-3 py-4 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md uppercase">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-4 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-md text-label-md uppercase">Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-4 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md uppercase">Players</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-4 bg-secondary-container text-on-secondary-container border-4 border-t-outline-variant border-l-outline-variant border-r-surface-container-highest border-b-surface-container-highest translate-y-0.5" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="font-label-md text-label-md uppercase">Console</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-4 bg-surface-container text-on-surface-variant border-4 border-t-surface-container-highest border-l-surface-container-highest border-r-outline-variant border-b-outline-variant hover:border-primary-fixed-dim active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">extension</span>
+<span class="font-label-md text-label-md uppercase">Plugins</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-2">
+<button class="mc-outset bg-[#8B8B8B] text-white py-3 px-4 mc-shadow font-label-md text-label-md uppercase tracking-wider">
+                Sync Server
+            </button>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md uppercase">Support</span>
+</a>
+</div>
+</aside>
+<main class="relative flex-1 flex flex-col h-screen overflow-hidden">
+<!-- Background Animation (World View) -->
+
+<!-- TopNavBar (from JSON) -->
+<header class="fixed top-0 w-full bg-surface/80 backdrop-blur-xl border-b-4 border-outline-variant flex justify-between items-center px-gutter h-16 z-50">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md text-primary-fixed drop-shadow-[2px_2px_0px_rgba(0,0,0,1)] mc-shadow">BotControl v1.0</span>
+<div class="hidden sm:flex gap-4">
+<span class="text-primary-fixed font-bold font-label-md">Status: Online</span>
+<span class="text-on-surface-variant font-label-md">IP: play.server.com</span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="p-2 hover:bg-surface-container-high active:translate-y-0.5 transition-transform">
+<span class="material-symbols-outlined text-primary-fixed">settings</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high active:translate-y-0.5 transition-transform">
+<span class="material-symbols-outlined text-primary-fixed">power_settings_new</span>
+</button>
+</div>
+</header>
+<!-- Chat Overlay Container -->
+<div class="flex-1 mt-16 p-4 md:p-8 flex flex-col justify-end z-10 relative">
+<!-- Chat Window -->
+<div class="w-full max-w-4xl mx-auto flex flex-col gap-4">
+<!-- Chat Messages Area (Dark Transparent) -->
+<div class="bg-black/60 backdrop-blur-md p-4 h-[60vh] overflow-y-auto chat-scroll flex flex-col gap-1 font-headline-md text-[18px] mc-shadow">
+<!-- System Message -->
+<div class="flex gap-2">
+<span class="color-e">[Server] Welcome back, Administrator.</span>
+</div>
+<!-- Player Messages with color codes -->
+<div class="flex gap-2">
+<span class="color-7">[14:02]</span>
+<span class="color-b"><steve></steve></span>
+<span class="color-f">Anyone found the stronghold yet?</span>
+</div>
+<div class="flex gap-2">
+<span class="color-7">[14:03]</span>
+<span class="color-c"><creeperhunter></creeperhunter></span>
+<span class="color-f">I think it's somewhere in the north-west desert.</span>
+</div>
+<!-- System Message -->
+<div class="flex gap-2">
+<span class="color-e">User Alex joined the game</span>
+</div>
+<div class="flex gap-2">
+<span class="color-7">[14:05]</span>
+<span class="color-a"><alex></alex></span>
+<span class="color-f">Hey guys! Check out my new skin.</span>
+</div>
+<div class="flex gap-2">
+<span class="color-7">[14:05]</span>
+<span class="color-b"><steve></steve></span>
+<span class="color-f">Nice. &amp;aGreen&amp;f really suits you.</span>
+</div>
+<!-- Bot Log Messages -->
+<div class="flex gap-2">
+<span class="color-7">[14:06]</span>
+<span class="bg-primary-container text-on-primary-container px-1 font-bold">[BOT]</span>
+<span class="color-a">Auto-moderator: </span>
+<span class="color-f">Mining operation completed at chunk (12, -4).</span>
+</div>
+<div class="flex gap-2">
+<span class="color-e">Plugin "CoreProtect" updated to v21.2</span>
+</div>
+<div class="flex gap-2">
+<span class="color-7">[14:10]</span>
+<span class="color-c"><creeperhunter></creeperhunter></span>
+<span class="color-f">brb, going to craft some more torches.</span>
+</div>
+</div>
+<!-- Chat Input Bar -->
+<div class="flex items-center gap-2">
+<div class="flex-1 bg-black/80 mc-inset px-4 py-3 flex items-center gap-2">
+<span class="material-symbols-outlined color-7 text-[20px]">chevron_right</span>
+<input class="bg-transparent border-none outline-none ring-0 w-full text-white font-headline-md text-body-md focus:ring-0 placeholder:text-on-surface-variant/50" placeholder="Type a message or command..." type="text"/>
+<div class="w-2 h-6 bg-white animate-pulse" id="cursor"></div>
+</div>
+<button class="mc-outset bg-[#8B8B8B] text-white px-6 py-3 font-headline-md text-label-md mc-shadow uppercase">
+                        Send
+                    </button>
+</div>
+</div>
+<!-- Experience Bar (Progress Bar) -->
+<div class="w-full max-w-4xl mx-auto mt-6">
+<div class="flex justify-between items-end mb-1">
+<span class="font-headline-md text-label-md text-primary-fixed drop-shadow-md">XP LEVEL 64</span>
+<span class="font-headline-md text-label-md text-primary-fixed drop-shadow-md">SERVER LOAD: 12%</span>
+</div>
+<div class="h-4 bg-black border-2 border-[#404040] relative overflow-hidden">
+<!-- Segmented Fill -->
+<div class="h-full bg-primary-container w-[64%] flex">
+<div class="h-full border-r-2 border-black w-[10%]"></div>
+<div class="h-full border-r-2 border-black w-[10%]"></div>
+<div class="h-full border-r-2 border-black w-[10%]"></div>
+<div class="h-full border-r-2 border-black w-[10%]"></div>
+<div class="h-full border-r-2 border-black w-[10%]"></div>
+<div class="h-full border-r-2 border-black w-[10%]"></div>
+<div class="h-full border-r-2 border-black w-[10%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Inventory Grid Overlay (Purely Visual Decorative) -->
+<div class="absolute top-20 right-8 hidden xl:grid grid-cols-3 gap-2 opacity-60">
+<div class="w-16 h-16 bg-black/40 mc-inset flex items-center justify-center">
+<div class="w-12 h-12" data-alt="A pixelated dirt block icon from a voxel game, 3D isometric view, dark and gritty aesthetic with sharp brown edges." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAJjaJKCEVSMPuH2iob94O_GsLsoB4Q6PCfbHbMfvi2NM0Yb8mHVElZ8OqdrToUf0RJDr1otcuTkx4btyQlRTZjBQATF53fPIPLpkXYTmnyikMsldJonK8wDCq1-3qQVMxvtQrhIi9rfUf2UltNtwd6uOtp52-WcGwxkW8rho-yOInbpeUD03bfN88K2BpsuBwemFEJHiig1jLVa8pVwTpLgA4Ug-GEZCG9R38UnKXLQSHZFICwvoiSyA')"></div>
+</div>
+<div class="w-16 h-16 bg-black/40 mc-inset flex items-center justify-center">
+<div class="w-12 h-12" data-alt="A pixelated diamond pickaxe icon from a voxel game, glowing blue edges, sharp 8-bit style, dark background." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBUgDUuAWTz99hQ2l6lkYQFFkvnyI45G8sM-W9r6vqQObT5CiEZWEl2-NwKyZ1JCS0b9PUkJULboBebkBVxC_qDEsd5wHbGWlewiw02xmIpeXbx7PQjsR94EAYZBYJRsaqNuLIGclGYwaSqlffm5Uia-nlkEJ9UXPQfqXKAiVMP70UShOvkMewq-ujHSmRiZ0kTF0-qOAgGMQrD5lqJ0VYQcq5g0rovDK9dmrAxN5SZva4aZwsxC5CnAg')"></div>
+</div>
+<div class="w-16 h-16 bg-black/40 mc-inset flex items-center justify-center">
+<div class="w-12 h-12" data-alt="A pixelated golden apple icon from a voxel game, shimmering gold texture, thick dark outlines, high contrast." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAyIU09DBRIRiIHHJ-03rnHTL4aNphXctXdhRwcqh6YNv1rsMNg4fMvuo3z0flPMz_AMm8V4m3W_PjU-F4nz4EmK0yKZwhJVvQVcQ3zfIB2uPmCVMDcFWjWiBrAYyHzk5ZSg6kR5866CpTGQWc3CtnepY1x_L9_yocBUkoE45Zy1tdt6cAKR57bBQnvuqjT9p131wu45QXzQF4kd6PgvrdziwNkYHtJI4zxYMz5ZU8XnCfFiR8ktfg8EA')"></div>
+</div>
+<div class="w-16 h-16 bg-black/40 mc-inset flex items-center justify-center"></div>
+<div class="w-16 h-16 bg-black/40 mc-inset flex items-center justify-center"></div>
+<div class="w-16 h-16 bg-black/40 mc-inset flex items-center justify-center"></div>
+</div>
+</main>
+<script>
+        // Micro-interaction for input cursor
+        const input = document.querySelector('input');
+        const cursor = document.getElementById('cursor');
+
+        input.addEventListener('focus', () => {
+            cursor.classList.remove('hidden');
+        });
+
+        input.addEventListener('blur', () => {
+            cursor.classList.add('hidden');
+        });
+
+        // Simple scroll to bottom logic
+        const chatArea = document.querySelector('.chat-scroll');
+        chatArea.scrollTop = chatArea.scrollHeight;
+
+        // Simulate typing animation
+        input.addEventListener('input', (e) => {
+            if(e.target.value.length > 0) {
+                cursor.classList.add('hidden');
+            } else {
+                cursor.classList.remove('hidden');
+            }
+        });
+    </script>
+</body></html>
