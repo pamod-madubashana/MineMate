@@ -45,3 +45,8 @@ yarn-error.log*
 .graphifyignore
 graphify-out/
 stitch_minemate_ai_control_panel/
+
+# Database
+database/
+*.db
+*.db-journal
