@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use azalea::Client;
@@ -16,6 +17,7 @@ pub struct BotClient {
     pub connected: Arc<RwLock<bool>>,
     pub app_handle: AppHandle,
     pub azalea_client: Arc<RwLock<Option<Client>>>,
+    pub follow_stop: Arc<AtomicBool>,
 }
 
 impl BotClient {
@@ -28,6 +30,7 @@ impl BotClient {
             connected: Arc::new(RwLock::new(false)),
             app_handle,
             azalea_client: Arc::new(RwLock::new(None)),
+            follow_stop: Arc::new(AtomicBool::new(false)),
         }
     }
 
