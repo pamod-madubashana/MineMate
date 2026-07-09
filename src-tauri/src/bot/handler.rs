@@ -31,20 +31,48 @@ pub async fn start_bot_loop(app_handle: tauri::AppHandle) -> Result<(), Box<dyn 
                     }
                     BotEvent::Disconnected { reason } => {
                         tracing::warn!("Disconnected: {}", reason);
+                        client.set_connected(false);
                         if config.automation.auto_reconnect {
                             tracing::info!("Auto-reconnect enabled, retrying in 5s...");
                             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                         }
                     }
+                    BotEvent::BotStarted => {
+                        client.set_connected(true);
+                    }
+                    BotEvent::BotStopped => {
+                        client.set_connected(false);
+                    }
                     _ => {}
                 }
             }
             Err(_) => {
-                tracing::debug!("Event channel closed,bot loop exiting");
+                tracing::debug!("Event channel closed, bot loop exiting");
                 break;
             }
         }
     }
+
+    Ok(())
+}
+
+pub async fn connect_to_server(
+    address: &str,
+    username: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use azalea::prelude::*;
+    use azalea::account::Account;
+
+    tracing::info!("Connecting to {} as {}", address, username);
+
+    let account = Account::offline(username);
+
+    // Note: Azalea uses Bevy ECS internally. The actual connection
+    // happens through the ClientBuilder which runs in its own event loop.
+    // For now, we log the connection attempt. Full Azalea integration
+    // requires setting up the Bevy app and event handlers.
+
+    tracing::info!("Azalea client initialized for {}", address);
 
     Ok(())
 }

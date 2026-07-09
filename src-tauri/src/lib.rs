@@ -26,6 +26,7 @@ pub fn run() {
             commands::bot::stop_bot,
             commands::bot::get_bot_status,
             commands::bot::send_chat,
+            commands::bot::get_connection_status,
             commands::config::get_config,
             commands::config::save_config,
             commands::memory::list_players,
