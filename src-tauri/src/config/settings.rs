@@ -40,6 +40,7 @@ pub struct AiConfig {
 pub struct AutomationConfig {
     pub auto_sleep: bool,
     pub auto_eat: bool,
+    pub auto_respawn: bool,
     pub auto_reconnect: bool,
     pub welcome_messages: bool,
     pub starter_kit_on_respawn: bool,
@@ -72,6 +73,7 @@ impl Default for AppConfig {
             automation: AutomationConfig {
                 auto_sleep: true,
                 auto_eat: true,
+                auto_respawn: true,
                 auto_reconnect: true,
                 welcome_messages: true,
                 starter_kit_on_respawn: true,

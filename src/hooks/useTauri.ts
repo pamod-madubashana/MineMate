@@ -40,6 +40,7 @@ export interface AppConfig {
   automation: {
     auto_sleep: boolean;
     auto_eat: boolean;
+    auto_respawn: boolean;
     auto_reconnect: boolean;
     welcome_messages: boolean;
     starter_kit_on_respawn: boolean;
