@@ -1,4 +1,15 @@
 <p align="center">
+  <img src="src-tauri/icons/icon.png" alt="MineMate AI Logo" width="128" height="128">
+</p>
+
+<h1 align="center">MineMate AI</h1>
+
+<p align="center">
+  <strong>AI-Powered Minecraft Staff Bot</strong><br>
+  An intelligent Minecraft bot that joins servers as a player while acting as an AI assistant for all players.
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/built_with-Rust-orange.svg" alt="Built with Rust">
   <img src="https://img.shields.io/badge/Tauri-v2-blue.svg" alt="Tauri v2">
   <img src="https://img.shields.io/badge/React-18-61dafb.svg" alt="React">
@@ -7,13 +18,6 @@
   <img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version 0.1.0">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="Platforms">
   <img src="https://img.shields.io/github/license/pamod-madubashana/BotCraft" alt="License">
-</p>
-
-<h1 align="center">MineMate AI</h1>
-
-<p align="center">
-  <strong>AI-Powered Minecraft Staff Bot</strong><br>
-  An intelligent Minecraft bot that joins servers as a player while acting as an AI assistant for all players.
 </p>
 
 ---
@@ -39,7 +43,7 @@ The bot combines deterministic automation with an LLM (via NVIDIA NIM API) so th
 
 | Component | Technology |
 |-----------|------------|
-| Language | Rust |
+| Language | Rust (nightly) |
 | Desktop Framework | Tauri v2 |
 | Frontend | React + TypeScript + Vite |
 | Minecraft Client | Azalea |
@@ -47,6 +51,16 @@ The bot combines deterministic automation with an LLM (via NVIDIA NIM API) so th
 | Database | SQLite |
 | Configuration | TOML |
 | Design System | Pixel-Brutalism (Minecraft UI) |
+
+## Prerequisites
+
+- **Rust nightly** (required by Azalea for `#![feature(portable_simd)]`)
+  ```bash
+  rustup install nightly
+  rustup default nightly
+  ```
+- Node.js 18+
+- Tauri CLI
 
 ## Project Structure
 
@@ -58,7 +72,7 @@ minemate/
 │   │   ├── bot/              # Azalea client wrapper, event system
 │   │   ├── commands/         # Tauri IPC commands
 │   │   ├── config/           # TOML config management
-│   │   ├── executor/         # Tool execution, automations
+│   │   ├── executor/         # Tool execution, automations, security
 │   │   └── memory/           # SQLite database operations
 │   └── Cargo.toml
 ├── src/                       # React frontend
@@ -67,30 +81,23 @@ minemate/
 │   │   ├── dashboard/        # HUD, PlayerList, EventLog
 │   │   ├── chat/             # Chat messages, input
 │   │   ├── config/           # Settings panel
-│   │   ├── tasks/            # Task queue
-│   │   ├── blueprint/        # Blueprint manager
-│   │   └── memory/           # Memory viewer
+│   │   └── tasks/            # Task queue
 │   ├── hooks/                # Tauri IPC hooks
 │   └── styles/               # Pixel-Brutalism CSS
 ├── config/                    # Default TOML config
-├── blueprints/                # Building blueprints
 └── database/                  # SQLite database
 ```
 
 ## Getting Started
 
-### Prerequisites
-
-- Rust (nightly)
-- Node.js 18+
-- Tauri CLI
-
-### Installation
-
 ```bash
 # Clone the repository
 git clone https://github.com/pamod-madubashana/BotCraft.git
 cd BotCraft
+
+# Install Rust nightly
+rustup install nightly
+rustup default nightly
 
 # Install frontend dependencies
 npm install
@@ -140,8 +147,8 @@ The bot can perform these actions via LLM tool calling:
 - [x] Phase 2: Core bot with Azalea integration
 - [x] Phase 3: AI Engine with NVIDIA NIM streaming
 - [x] Phase 4: Memory system with SQLite
-- [ ] Phase 5: Complete UI pages
-- [ ] Phase 6: Security & polish
+- [x] Phase 5: Complete UI pages with Tauri IPC
+- [x] Phase 6: Security & audit logging
 - [ ] Phase 7: Multi-bot coordination
 
 ## Contributing
@@ -157,4 +164,3 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [Azalea](https://github.com/azalea-rs/azalea) - Minecraft client framework
 - [Tauri](https://tauri.app/) - Desktop app framework
 - [NVIDIA NIM](https://build.nvidia.com/) - AI inference API
-- [Pixel-Brutalism](https://github.com/) - Design inspiration
