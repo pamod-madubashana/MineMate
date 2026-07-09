@@ -2,29 +2,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BotEvent {
-    ChatMessage {
-        player: String,
-        message: String,
-    },
-    PlayerJoined {
-        name: String,
-    },
-    PlayerLeft {
-        name: String,
-    },
-    Disconnected {
-        reason: String,
-    },
-    HealthChanged {
-        health: f32,
-        food: f32,
-    },
+    ChatMessage { player: String, message: String },
+    PlayerJoined { name: String },
+    PlayerLeft { name: String },
+    Disconnected { reason: String },
+    HealthChanged { health: f32, food: f32 },
     InventoryChanged,
-    PositionChanged {
-        x: f64,
-        y: f64,
-        z: f64,
-    },
+    PositionChanged { x: f64, y: f64, z: f64 },
     BotStarted,
     BotStopped,
 }

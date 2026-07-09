@@ -1,7 +1,9 @@
+#![allow(dead_code)]
+
+use parking_lot::RwLock;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use parking_lot::RwLock;
 use tokio::sync::mpsc;
 
 const NIM_BASE_URL: &str = "https://integrate.api.nvidia.com/v1";
@@ -122,7 +124,8 @@ impl NimClient {
             body["tools"] = serde_json::to_value(tools)?;
         }
 
-        let response = self.client
+        let response = self
+            .client
             .post(format!("{}/chat/completions", NIM_BASE_URL))
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
@@ -159,7 +162,8 @@ impl NimClient {
             body["tools"] = serde_json::to_value(tools)?;
         }
 
-        let response = self.client
+        let response = self
+            .client
             .post(format!("{}/chat/completions", NIM_BASE_URL))
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
@@ -207,7 +211,10 @@ impl NimClient {
                                                     tool_type: "function".to_string(),
                                                     function: FunctionCall {
                                                         name: name.clone(),
-                                                        arguments: func.arguments.clone().unwrap_or_default(),
+                                                        arguments: func
+                                                            .arguments
+                                                            .clone()
+                                                            .unwrap_or_default(),
                                                     },
                                                 });
                                             }

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::ai::client::ToolCall;
 use serde_json::Value;
 
@@ -24,7 +26,9 @@ impl ToolExecutor {
             "follow" => {
                 let player = args["player"].as_str().unwrap_or("").to_string();
                 Ok(ToolResult {
-                    action: ToolAction::Follow { player: player.clone() },
+                    action: ToolAction::Follow {
+                        player: player.clone(),
+                    },
                     message: format!("Following {}", player),
                 })
             }
@@ -32,7 +36,10 @@ impl ToolExecutor {
                 let block = args["block"].as_str().unwrap_or("stone").to_string();
                 let count = args["count"].as_u64().unwrap_or(1) as u32;
                 Ok(ToolResult {
-                    action: ToolAction::Mine { block: block.clone(), count },
+                    action: ToolAction::Mine {
+                        block: block.clone(),
+                        count,
+                    },
                     message: format!("Mining {}x {}", count, block),
                 })
             }
@@ -40,44 +47,56 @@ impl ToolExecutor {
                 let item = args["item"].as_str().unwrap_or("").to_string();
                 let count = args["count"].as_u64().unwrap_or(1) as u32;
                 Ok(ToolResult {
-                    action: ToolAction::Craft { item: item.clone(), count },
+                    action: ToolAction::Craft {
+                        item: item.clone(),
+                        count,
+                    },
                     message: format!("Crafting {}x {}", count, item),
                 })
             }
-            "attack" => {
-                Ok(ToolResult {
-                    action: ToolAction::Attack,
-                    message: "Attacking nearest hostile".to_string(),
-                })
-            }
+            "attack" => Ok(ToolResult {
+                action: ToolAction::Attack,
+                message: "Attacking nearest hostile".to_string(),
+            }),
             "place_block" => {
                 let block = args["block"].as_str().unwrap_or("stone").to_string();
                 let x = args["x"].as_i64().unwrap_or(0) as i32;
                 let y = args["y"].as_i64().unwrap_or(0) as i32;
                 let z = args["z"].as_i64().unwrap_or(0) as i32;
                 Ok(ToolResult {
-                    action: ToolAction::PlaceBlock { block: block.clone(), x, y, z },
+                    action: ToolAction::PlaceBlock {
+                        block: block.clone(),
+                        x,
+                        y,
+                        z,
+                    },
                     message: format!("Placing {} at ({}, {}, {})", block, x, y, z),
                 })
             }
             "build_structure" => {
                 let structure = args["structure"].as_str().unwrap_or("").to_string();
                 Ok(ToolResult {
-                    action: ToolAction::BuildStructure { structure: structure.clone() },
+                    action: ToolAction::BuildStructure {
+                        structure: structure.clone(),
+                    },
                     message: format!("Building {}", structure),
                 })
             }
             "reply" => {
                 let message = args["message"].as_str().unwrap_or("").to_string();
                 Ok(ToolResult {
-                    action: ToolAction::Reply { message: message.clone() },
+                    action: ToolAction::Reply {
+                        message: message.clone(),
+                    },
                     message: format!("Replying: {}", message),
                 })
             }
             "execute_command" => {
                 let command = args["command"].as_str().unwrap_or("").to_string();
                 Ok(ToolResult {
-                    action: ToolAction::ExecuteCommand { command: command.clone() },
+                    action: ToolAction::ExecuteCommand {
+                        command: command.clone(),
+                    },
                     message: format!("Executing: /{}", command),
                 })
             }
@@ -93,7 +112,11 @@ impl ToolExecutor {
                 let item = args["item"].as_str().unwrap_or("").to_string();
                 let count = args["count"].as_u64().unwrap_or(1) as u32;
                 Ok(ToolResult {
-                    action: ToolAction::GiveItem { player: player.clone(), item: item.clone(), count },
+                    action: ToolAction::GiveItem {
+                        player: player.clone(),
+                        item: item.clone(),
+                        count,
+                    },
                     message: format!("Giving {}x {} to {}", count, item, player),
                 })
             }
@@ -106,16 +129,16 @@ impl ToolExecutor {
                     message: format!("Teleporting to ({}, {}, {})", x, y, z),
                 })
             }
-            "sort_chests" => {
-                Ok(ToolResult {
-                    action: ToolAction::SortChests,
-                    message: "Sorting storage chests".to_string(),
-                })
-            }
+            "sort_chests" => Ok(ToolResult {
+                action: ToolAction::SortChests,
+                message: "Sorting storage chests".to_string(),
+            }),
             "protect_player" => {
                 let player = args["player"].as_str().unwrap_or("").to_string();
                 Ok(ToolResult {
-                    action: ToolAction::ProtectPlayer { player: player.clone() },
+                    action: ToolAction::ProtectPlayer {
+                        player: player.clone(),
+                    },
                     message: format!("Protecting {}", player),
                 })
             }
@@ -132,18 +155,53 @@ pub struct ToolResult {
 
 #[derive(Debug, Clone)]
 pub enum ToolAction {
-    MoveTo { x: i32, y: i32, z: i32 },
-    Follow { player: String },
-    Mine { block: String, count: u32 },
-    Craft { item: String, count: u32 },
+    MoveTo {
+        x: i32,
+        y: i32,
+        z: i32,
+    },
+    Follow {
+        player: String,
+    },
+    Mine {
+        block: String,
+        count: u32,
+    },
+    Craft {
+        item: String,
+        count: u32,
+    },
     Attack,
-    PlaceBlock { block: String, x: i32, y: i32, z: i32 },
-    BuildStructure { structure: String },
-    Reply { message: String },
-    ExecuteCommand { command: String },
-    ScanArea { radius: u32 },
-    GiveItem { player: String, item: String, count: u32 },
-    Teleport { x: i32, y: i32, z: i32 },
+    PlaceBlock {
+        block: String,
+        x: i32,
+        y: i32,
+        z: i32,
+    },
+    BuildStructure {
+        structure: String,
+    },
+    Reply {
+        message: String,
+    },
+    ExecuteCommand {
+        command: String,
+    },
+    ScanArea {
+        radius: u32,
+    },
+    GiveItem {
+        player: String,
+        item: String,
+        count: u32,
+    },
+    Teleport {
+        x: i32,
+        y: i32,
+        z: i32,
+    },
     SortChests,
-    ProtectPlayer { player: String },
+    ProtectPlayer {
+        player: String,
+    },
 }

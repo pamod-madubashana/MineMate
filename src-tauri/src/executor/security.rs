@@ -1,5 +1,7 @@
-use crate::executor::actions::ToolAction;
+#![allow(dead_code)]
+
 use crate::config::PermissionMode;
+use crate::executor::actions::ToolAction;
 
 pub struct SecurityValidator {
     permission_mode: PermissionMode,
@@ -21,9 +23,18 @@ impl SecurityValidator {
                 }
 
                 let dangerous_commands = vec![
-                    "op", "deop", "ban", "pardon", "kick",
-                    "stop", "restart", "whitelist", "gamemode",
-                    "difficulty", "time set", "weather",
+                    "op",
+                    "deop",
+                    "ban",
+                    "pardon",
+                    "kick",
+                    "stop",
+                    "restart",
+                    "whitelist",
+                    "gamemode",
+                    "difficulty",
+                    "time set",
+                    "weather",
                 ];
 
                 let cmd_lower = command.to_lowercase();
@@ -89,17 +100,9 @@ impl SecurityValidator {
 
 #[derive(Debug, Clone)]
 pub enum SecurityError {
-    InsufficientPermissions {
-        required: String,
-        current: String,
-    },
-    DangerousCommand {
-        command: String,
-    },
-    MessageTooLong {
-        length: usize,
-        max: usize,
-    },
+    InsufficientPermissions { required: String, current: String },
+    DangerousCommand { command: String },
+    MessageTooLong { length: usize, max: usize },
     InvalidCharacter,
 }
 
@@ -107,7 +110,11 @@ impl std::fmt::Display for SecurityError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SecurityError::InsufficientPermissions { required, current } => {
-                write!(f, "Insufficient permissions: {} required, have {}", required, current)
+                write!(
+                    f,
+                    "Insufficient permissions: {} required, have {}",
+                    required, current
+                )
             }
             SecurityError::DangerousCommand { command } => {
                 write!(f, "Dangerous command blocked: /{}", command)

@@ -1,7 +1,9 @@
+#![allow(dead_code)]
+
 use crate::bot::events::{BotEvent, BotStatus};
 use crate::config::AppConfig;
-use std::sync::Arc;
 use parking_lot::RwLock;
+use std::sync::Arc;
 use tokio::sync::broadcast;
 
 #[derive(Clone)]

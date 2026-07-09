@@ -1,14 +1,16 @@
 use crate::bot::client::BotClient;
 use crate::bot::events::BotEvent;
 use crate::config::AppConfig;
-use std::sync::Arc;
 use parking_lot::RwLock;
+use std::sync::Arc;
 use tauri::Emitter;
 
 pub static BOT_CLIENT: once_cell::sync::Lazy<Arc<RwLock<Option<BotClient>>>> =
     once_cell::sync::Lazy::new(|| Arc::new(RwLock::new(None)));
 
-pub async fn start_bot_loop(app_handle: tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start_bot_loop(
+    app_handle: tauri::AppHandle,
+) -> Result<(), Box<dyn std::error::Error>> {
     let config = AppConfig::load()?;
     let client = BotClient::new(config.clone());
 
@@ -17,7 +19,11 @@ pub async fn start_bot_loop(app_handle: tauri::AppHandle) -> Result<(), Box<dyn 
         *bot = Some(client.clone());
     }
 
-    tracing::info!("Bot loop started for {}:{}", config.server.address, config.server.port);
+    tracing::info!(
+        "Bot loop started for {}:{}",
+        config.server.address,
+        config.server.port
+    );
 
     let mut rx = client.subscribe();
 

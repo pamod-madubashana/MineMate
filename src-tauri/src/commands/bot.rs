@@ -1,24 +1,27 @@
 use crate::bot::events::BotStatus;
-use crate::bot::handler::BOT_CLIENT;
 use crate::bot::handler::connect_to_server;
-use crate::executor::security::SecurityValidator;
-use crate::executor::audit::get_audit_logger;
+use crate::bot::handler::BOT_CLIENT;
 use crate::config::AppConfig;
+use crate::executor::audit::get_audit_logger;
+use crate::executor::security::SecurityValidator;
 
 #[tauri::command]
 pub async fn start_bot(server: String, username: String) -> Result<(), String> {
     tracing::info!("Starting bot for {} on {}", username, server);
 
     let config = AppConfig::load().map_err(|e| e.to_string())?;
-    let validator = SecurityValidator::new(config.bot.permission_mode);
+    let _validator = SecurityValidator::new(config.bot.permission_mode);
 
-    get_audit_logger().log_success("start_bot", Some(&username), &format!("Connecting to {}", server));
+    get_audit_logger().log_success(
+        "start_bot",
+        Some(&username),
+        &format!("Connecting to {}", server),
+    );
 
-    connect_to_server(&server, &username).await
-        .map_err(|e| {
-            get_audit_logger().log_failure("start_bot", Some(&username), &e.to_string());
-            format!("Failed to connect: {}", e)
-        })?;
+    connect_to_server(&server, &username).await.map_err(|e| {
+        get_audit_logger().log_failure("start_bot", Some(&username), &e.to_string());
+        format!("Failed to connect: {}", e)
+    })?;
 
     Ok(())
 }
@@ -84,14 +87,17 @@ pub async fn get_connection_status() -> Result<bool, String> {
 #[tauri::command]
 pub async fn get_audit_logs(count: u32) -> Result<Vec<serde_json::Value>, String> {
     let logs = get_audit_logger().get_recent_logs(count as usize);
-    let values: Vec<serde_json::Value> = logs.iter().map(|log| {
-        serde_json::json!({
-            "timestamp": log.timestamp,
-            "action": log.action,
-            "player": log.player,
-            "result": format!("{:?}", log.result),
-            "details": log.details
+    let values: Vec<serde_json::Value> = logs
+        .iter()
+        .map(|log| {
+            serde_json::json!({
+                "timestamp": log.timestamp,
+                "action": log.action,
+                "player": log.player,
+                "result": format!("{:?}", log.result),
+                "details": log.details
+            })
         })
-    }).collect();
+        .collect();
     Ok(values)
 }

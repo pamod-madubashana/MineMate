@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::ai::client::ChatMessage;
 use crate::bot::events::BotStatus;
 
@@ -87,9 +89,6 @@ What should I do? Respond with a tool call or helpful message."#,
     }
 
     pub fn build_messages(&self) -> Vec<ChatMessage> {
-        vec![
-            self.build_system_message(),
-            self.build_context_message(),
-        ]
+        vec![self.build_system_message(), self.build_context_message()]
     }
 }

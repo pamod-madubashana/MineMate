@@ -1,7 +1,9 @@
+#![allow(dead_code)]
+
 use crate::bot::events::BotEvent;
 use crate::config::AppConfig;
-use std::sync::Arc;
 use parking_lot::RwLock;
+use std::sync::Arc;
 
 pub struct AutomationEngine {
     config: Arc<RwLock<AppConfig>>,
@@ -16,12 +18,8 @@ impl AutomationEngine {
         let config = self.config.read();
 
         match event {
-            BotEvent::ChatMessage { player, message } => {
-                self.handle_chat(player, message, &config)
-            }
-            BotEvent::HealthChanged { health, food } => {
-                self.handle_health(*health, *food, &config)
-            }
+            BotEvent::ChatMessage { player, message } => self.handle_chat(player, message, &config),
+            BotEvent::HealthChanged { health, food } => self.handle_health(*health, *food, &config),
             _ => None,
         }
     }
@@ -42,7 +40,9 @@ impl AutomationEngine {
         }
 
         if message_lower == "kit" && config.automation.starter_kit_on_respawn {
-            let items: Vec<String> = config.starter_kit.iter()
+            let items: Vec<String> = config
+                .starter_kit
+                .iter()
                 .map(|item| format!("{}x{}", item.item, item.count))
                 .collect();
             return Some(BotAction::SendMessage {

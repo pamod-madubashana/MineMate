@@ -1,9 +1,9 @@
 mod ai;
+mod bot;
 mod commands;
 mod config;
 mod executor;
 mod memory;
-mod bot;
 
 pub fn run() {
     tracing_subscriber::fmt::init();

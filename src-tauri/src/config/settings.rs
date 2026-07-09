@@ -77,10 +77,22 @@ impl Default for AppConfig {
                 starter_kit_on_respawn: true,
             },
             starter_kit: vec![
-                KitItem { item: "diamond_sword".to_string(), count: 1 },
-                KitItem { item: "diamond_pickaxe".to_string(), count: 1 },
-                KitItem { item: "diamond_axe".to_string(), count: 1 },
-                KitItem { item: "cooked_beef".to_string(), count: 64 },
+                KitItem {
+                    item: "diamond_sword".to_string(),
+                    count: 1,
+                },
+                KitItem {
+                    item: "diamond_pickaxe".to_string(),
+                    count: 1,
+                },
+                KitItem {
+                    item: "diamond_axe".to_string(),
+                    count: 1,
+                },
+                KitItem {
+                    item: "cooked_beef".to_string(),
+                    count: 64,
+                },
             ],
         }
     }

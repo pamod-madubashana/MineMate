@@ -1,5 +1,7 @@
-use std::sync::Arc;
+#![allow(dead_code)]
+
 use parking_lot::RwLock;
+use std::sync::Arc;
 
 pub struct AuditLogger {
     logs: Arc<RwLock<Vec<AuditEntry>>>,

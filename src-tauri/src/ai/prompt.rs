@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::ai::client::ChatMessage;
 
 pub fn build_context(
