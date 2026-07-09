@@ -1,3 +1,5 @@
+use std::net::ToSocketAddrs;
+
 use crate::bot::client::BotClient;
 use crate::bot::events::BotEvent;
 use crate::bot::events::BotStatus;
@@ -6,6 +8,7 @@ use crate::config::AppConfig;
 use crate::executor::audit::get_audit_logger;
 use crate::executor::security::SecurityValidator;
 use azalea::prelude::*;
+use azalea::protocol::address::{ResolvedAddr, ServerAddr};
 
 async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
     match event {
@@ -13,21 +16,21 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
             tracing::info!("Bot spawned in world");
             if let Some(b) = BOT_CLIENT.read().as_ref() {
                 b.set_connected(true);
-                let _ = b.event_tx.send(BotEvent::BotStarted);
+                b.emit_event(BotEvent::BotStarted);
             }
         }
         azalea::Event::Disconnect(reason) => {
             tracing::warn!("Bot disconnected: {:?}", reason);
             if let Some(b) = BOT_CLIENT.read().as_ref() {
                 b.set_connected(false);
-                let _ = b.event_tx.send(BotEvent::Disconnected {
+                b.emit_event(BotEvent::Disconnected {
                     reason: format!("{:?}", reason),
                 });
             }
         }
         azalea::Event::Chat(chat) => {
             if let Some(b) = BOT_CLIENT.read().as_ref() {
-                let _ = b.event_tx.send(BotEvent::ChatMessage {
+                b.emit_event(BotEvent::ChatMessage {
                     player: chat.sender().unwrap_or_default(),
                     message: chat.content(),
                 });
@@ -44,7 +47,7 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
 }
 
 #[tauri::command]
-pub async fn start_bot(server: String, username: String) -> Result<(), String> {
+pub async fn start_bot(server: String, username: String, app_handle: tauri::AppHandle) -> Result<(), String> {
     tracing::info!("Starting bot for {} on {}", username, server);
 
     let config = AppConfig::load().map_err(|e| e.to_string())?;
@@ -57,7 +60,7 @@ pub async fn start_bot(server: String, username: String) -> Result<(), String> {
     );
 
     // Create BotClient and store it so events can be emitted
-    let client = BotClient::new(config.clone());
+    let client = BotClient::new(config.clone(), app_handle.clone());
     {
         let mut bot = BOT_CLIENT.write();
         *bot = Some(client.clone());
@@ -79,21 +82,59 @@ pub async fn start_bot(server: String, username: String) -> Result<(), String> {
 
             let account = Account::offline(&uname);
 
+            // Pre-resolve to IPv4 — Azalea's built-in hickory-resolver picks
+            // the first DNS result, which can be an unreachable NAT64 IPv6
+            // address on some networks (e.g. Aternos servers).
+            let resolved = match resolve_ipv4(&address) {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::error!("Failed to resolve {} to IPv4: {}", address, e);
+                    if let Some(b) = BOT_CLIENT.read().as_ref() {
+                        b.set_connected(false);
+                        let _ = b.event_tx.send(BotEvent::Disconnected {
+                            reason: format!("DNS resolution failed: {}", e),
+                        });
+                    }
+                    return;
+                }
+            };
+
             let exit = ClientBuilder::new()
                 .set_handler(azalea_handler)
-                .start(account, address.as_str())
+                .start(account, &resolved)
                 .await;
 
             tracing::info!("Bot exited with: {:?}", exit);
 
             if let Some(b) = BOT_CLIENT.read().as_ref() {
                 b.set_connected(false);
-                let _ = b.event_tx.send(BotEvent::BotStopped);
+                b.emit_event(BotEvent::BotStopped);
             }
         });
     });
 
     Ok(())
+}
+
+/// Resolve a Minecraft server address to an IPv4 address only.
+///
+/// The standard library DNS resolver is used instead of Azalea's
+/// hickory-resolver, which may return an IPv6 NAT64 address first
+/// that is unreachable on the local network.
+fn resolve_ipv4(addr: &str) -> Result<ResolvedAddr, String> {
+    let server = ServerAddr::try_from(addr).map_err(|_| format!("Invalid address: {}", addr))?;
+    let ips: Vec<std::net::SocketAddr> = addr
+        .to_socket_addrs()
+        .map_err(|e| format!("DNS resolution failed: {}", e))?
+        .collect();
+    let ipv4 = ips
+        .into_iter()
+        .find(|a| a.is_ipv4())
+        .ok_or_else(|| format!("No IPv4 address found for {}", addr))?;
+    Ok(ResolvedAddr {
+        server,
+        socket: ipv4,
+    })
 }
 
 #[tauri::command]
@@ -109,7 +150,7 @@ pub async fn stop_bot() -> Result<(), String> {
         let mut bot = BOT_CLIENT.write();
         if let Some(client) = bot.as_ref() {
             client.set_connected(false);
-            let _ = client.event_tx.send(BotEvent::BotStopped);
+            client.emit_event(BotEvent::BotStopped);
         }
         *bot = None;
     }

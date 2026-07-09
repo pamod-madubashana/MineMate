@@ -4,6 +4,7 @@ use crate::bot::events::{BotEvent, BotStatus};
 use crate::config::AppConfig;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use tauri::{AppHandle, Emitter};
 use tokio::sync::broadcast;
 
 #[derive(Clone)]
@@ -12,16 +13,18 @@ pub struct BotClient {
     pub event_tx: broadcast::Sender<BotEvent>,
     pub config: Arc<RwLock<AppConfig>>,
     pub connected: Arc<RwLock<bool>>,
+    pub app_handle: AppHandle,
 }
 
 impl BotClient {
-    pub fn new(config: AppConfig) -> Self {
+    pub fn new(config: AppConfig, app_handle: AppHandle) -> Self {
         let (event_tx, _) = broadcast::channel(100);
         Self {
             status: Arc::new(RwLock::new(BotStatus::default())),
             event_tx,
             config: Arc::new(RwLock::new(config)),
             connected: Arc::new(RwLock::new(false)),
+            app_handle,
         }
     }
 
@@ -38,7 +41,8 @@ impl BotClient {
     }
 
     pub fn emit_event(&self, event: BotEvent) {
-        let _ = self.event_tx.send(event);
+        let _ = self.event_tx.send(event.clone());
+        let _ = self.app_handle.emit("bot://event", event);
     }
 
     pub fn set_connected(&self, connected: bool) {

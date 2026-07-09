@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useBot, useConfig } from "../../hooks/useTauri";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 
 export default function TopNavBar() {
   const [connected, setConnected] = useState(false);
@@ -30,12 +32,23 @@ export default function TopNavBar() {
     checkStatus();
     const interval = setInterval(checkStatus, 5000);
 
+    let unlistenBotEvent: UnlistenFn | null = null;
+    const setupListener = async () => {
+      unlistenBotEvent = await listen<{ type: string }>("bot://event", (event) => {
+        const { type } = event.payload;
+        if (type === "BotStarted") setConnected(true);
+        if (type === "BotStopped" || type === "Disconnected") setConnected(false);
+      });
+    };
+    setupListener();
+
     // Listen for config changes
     const handleConfigSaved = () => loadConfig();
     window.addEventListener("config-saved", handleConfigSaved);
 
     return () => {
       clearInterval(interval);
+      unlistenBotEvent?.();
       window.removeEventListener("config-saved", handleConfigSaved);
     };
   }, [loadConfig, checkStatus]);

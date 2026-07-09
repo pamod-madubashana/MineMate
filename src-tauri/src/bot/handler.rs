@@ -21,7 +21,7 @@ pub async fn stop_bot() {
         let mut bot = BOT_CLIENT.write();
         if let Some(client) = bot.as_ref() {
             client.set_connected(false);
-            let _ = client.event_tx.send(BotEvent::BotStopped);
+            client.emit_event(BotEvent::BotStopped);
         }
         *bot = None;
     }
