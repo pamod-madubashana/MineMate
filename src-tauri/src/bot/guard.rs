@@ -7,17 +7,21 @@ use azalea::pathfinder::goals::RadiusGoal;
 use azalea::pathfinder::PathfinderClientExt;
 use azalea::Client;
 
-/// Melee attack range — only attack enemies this close to bot.
-const ATTACK_RANGE: f64 = 4.0;
+/// Chase range — attack enemies within this distance.
+const ATTACK_RANGE: f64 = 6.0;
 
 /// Follow distance — how close to stay to the master.
 const FOLLOW_RADIUS: f32 = 10.0;
 
+/// How long to chase an enemy after damage is detected (seconds).
+const COMBAT_DURATION: u64 = 5;
+
 /// Start the guard loop. Runs a background task that:
 ///
 /// 1. Continuously follows the master player.
-/// 2. Only attacks enemies when the master or bot takes damage.
-/// 3. Keeps totem of undying in off-hand.
+/// 2. Attacks enemies when the master or bot takes damage.
+/// 3. Chases the enemy for COMBAT_DURATION seconds.
+/// 4. Keeps totem of undying in off-hand.
 pub fn start_guard_loop(
     bot: Client,
     guarding_flag: Arc<AtomicBool>,
@@ -28,15 +32,19 @@ pub fn start_guard_loop(
         let mut last_bot_health: Option<f32> = None;
         let mut last_totem_time = std::time::Instant::now();
         let mut last_master_totem_time = std::time::Instant::now();
+        let mut combat_until: Option<std::time::Instant> = None;
 
         loop {
             if !guarding_flag.load(Ordering::Relaxed) {
                 last_master_health = None;
                 last_bot_health = None;
+                combat_until = None;
                 bot.stop_pathfinding();
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 continue;
             }
+
+            let now = std::time::Instant::now();
 
             // --- Detect damage to master ---
             let master_health_dropped = {
@@ -89,19 +97,17 @@ pub fn start_guard_loop(
                 }
             }
 
-            // --- Follow master ---
-            let master_name = master.read().clone();
-            if let Some(name) = master_name {
-                if let Some(pos) = get_player_position(&bot, &name).await {
-                    bot.start_goto(RadiusGoal {
-                        pos,
-                        radius: FOLLOW_RADIUS,
-                    });
-                }
+            // --- Enter combat mode when damage detected ---
+            if master_health_dropped || bot_health_dropped {
+                combat_until = Some(now + std::time::Duration::from_secs(COMBAT_DURATION));
+                tracing::info!("Combat triggered - searching for enemy");
             }
 
-            // --- Reactive combat: only attack if someone took damage ---
-            if master_health_dropped || bot_health_dropped {
+            // --- Combat: chase and attack enemy ---
+            let in_combat = combat_until.map_or(false, |t| now < t);
+
+            if in_combat {
+                // Find nearest hostile to the bot (within chase range)
                 let nearest_hostile = bot
                     .nearest_entities::<With<AbstractMonster>>()
                     .ok()
@@ -126,9 +132,39 @@ pub fn start_guard_loop(
                     });
 
                 if let Some(target) = nearest_hostile {
-                    tracing::info!("Retaliating against nearby hostile");
-                    let _ = target.look_at();
-                    target.attack();
+                    if let Ok(target_pos) = target.position() {
+                        let bot_pos = bot.position().unwrap_or_default();
+                        let dx = bot_pos.x - target_pos.x;
+                        let dy = bot_pos.y - target_pos.y;
+                        let dz = bot_pos.z - target_pos.z;
+                        let dist_sq = dx * dx + dy * dy + dz * dz;
+
+                        if dist_sq <= 4.0 * 4.0 {
+                            // In melee range — attack
+                            let _ = target.look_at();
+                            target.attack();
+                        } else {
+                            // Chase the enemy
+                            bot.start_goto(RadiusGoal {
+                                pos: target_pos,
+                                radius: 2.0,
+                            });
+                        }
+                    }
+                } else {
+                    // No enemy found, stop chasing
+                    bot.stop_pathfinding();
+                }
+            } else {
+                // --- Follow master (when not in combat) ---
+                let master_name = master.read().clone();
+                if let Some(name) = master_name {
+                    if let Some(pos) = get_player_position(&bot, &name).await {
+                        bot.start_goto(RadiusGoal {
+                            pos,
+                            radius: FOLLOW_RADIUS,
+                        });
+                    }
                 }
             }
 
@@ -159,7 +195,6 @@ async fn get_player_position(bot: &Client, name: &str) -> Option<azalea::Vec3> {
 }
 
 /// Ensure a totem of undying is in the bot's off-hand.
-/// Called only when health drops (totem consumed).
 async fn ensure_totem_equipped(bot: &Client) {
     bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
 }
