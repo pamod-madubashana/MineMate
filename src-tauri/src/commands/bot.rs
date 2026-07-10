@@ -41,6 +41,7 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
         azalea::Event::Chat(chat) => {
             let sender = chat.sender().unwrap_or_default();
             let content = chat.content();
+            tracing::debug!("Chat event — sender: {:?} content: {:?}", sender, content);
             if let Some(b) = BOT_CLIENT.read().as_ref() {
                 b.emit_event(BotEvent::ChatMessage {
                     player: sender.clone(),

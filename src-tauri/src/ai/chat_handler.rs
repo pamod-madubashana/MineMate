@@ -8,21 +8,19 @@ use crate::config::AppConfig;
 use crate::executor::actions::run_tool_call;
 
 /// Process a player chat message through NIM with tool support.
-///
-/// Builds context from bot state, includes available tools,
-/// and executes any tool calls the AI decides to make.
-/// Falls back to text reply if no tool is called.
-/// Skips if no API key is configured or if the sender is the bot itself.
 pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
     let config = match AppConfig::load() {
         Ok(c) => c,
         Err(e) => {
-            tracing::error!("Failed to load config for AI reply: {}", e);
+            let err = format!("Config load failed: {}", e);
+            tracing::error!("{}", err);
+            bot.chat(&format!("[MineMate Error] {}", err));
             return;
         }
     };
 
     if config.ai.api_key.is_empty() {
+        bot.chat("[MineMate] No API key configured — go to Config panel and set one.");
         return;
     }
 
@@ -46,11 +44,12 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
 
     let tools = available_tools();
 
-    // Extract response or error as a Send-friendly type before any .await
     let response = match nim.chat(&messages, Some(&tools)).await {
         Ok(r) => r,
         Err(e) => {
-            tracing::error!("AI chat error: {}", e);
+            let err = format!("AI API error: {}", e);
+            tracing::error!("{}", err);
+            bot.chat(&format!("[MineMate] {}", err));
             return;
         }
     };
