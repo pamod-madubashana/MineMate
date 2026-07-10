@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
-const NIM_BASE_URL: &str = "https://integrate.api.nvidia.com/v1";
+const NIM_BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/openai";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
