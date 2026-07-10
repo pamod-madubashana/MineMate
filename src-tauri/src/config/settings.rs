@@ -66,7 +66,7 @@ impl Default for AppConfig {
             },
             ai: AiConfig {
                 api_key: String::new(),
-                model: "meta/llama-3.3-70b-instruct".to_string(),
+                model: "gemini-3.5-flash".to_string(),
                 temperature: 0.7,
                 max_tokens: 1024,
             },
