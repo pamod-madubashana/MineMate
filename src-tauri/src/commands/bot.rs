@@ -21,6 +21,27 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                 b.start_time.write().replace(std::time::Instant::now());
                 b.emit_event(BotEvent::BotStarted);
 
+                // Spawn equipment: give items after a short delay
+                let equip_bot = bot.clone();
+                tokio::task::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    tracing::info!("Equipping bot with starter items");
+                    equip_bot.chat("/give @s minecraft:diamond_sword 1");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/enchant @s minecraft:unbreaking 3");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/enchant @s minecraft:fire_aspect 2");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/enchant @s minecraft:sweeping_edge 2");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/give @s minecraft:totem_of_undying 1");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/item replace entity @s weapon with minecraft:diamond_sword");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
+                    tracing::info!("Spawn equipment complete");
+                });
+
                 // Start the guard background loop
                 let guard_bot = bot.clone();
                 let guard_flag = b.guarding.clone();
