@@ -53,7 +53,7 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                             client.follow_stop.store(false, std::sync::atomic::Ordering::Relaxed);
                             client.set_following(Some(name.clone()));
                             crate::bot::follow::start_following(follow_bot.clone(), name, client.follow_stop.clone());
-                            follow_bot.chat("I will protect you!");
+                            follow_bot.chat("Hello !");
                             return;
                         }
                         tracing::debug!("default follow: no other player in tab list (attempt {})", attempt);
