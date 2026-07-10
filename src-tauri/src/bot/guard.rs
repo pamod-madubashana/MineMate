@@ -11,16 +11,12 @@ const GUARD_RADIUS: f64 = 30.0;
 /// Melee attack range.
 const ATTACK_RANGE: f64 = 4.0;
 
-/// Health threshold below which the bot equips a totem (if available).
-const TOTEM_HEALTH_THRESHOLD: f32 = 6.0;
-
 /// Start the guard loop. Runs a background task that:
 ///
 /// 1. Attacks any hostile entity within `GUARD_RADIUS` when the master
 ///    or the bot itself takes damage (retaliation).
 /// 2. Attacks proactively when a hostile is within `ATTACK_RANGE`.
-/// 3. Auto-equips a Totem of Undying when the bot's health drops low,
-///    and requests a new one via `/give` if it's consumed.
+/// 3. Always keeps diamond sword in main hand and totem in off-hand.
 pub fn start_guard_loop(
     bot: Client,
     guarding_flag: Arc<AtomicBool>,
@@ -29,15 +25,20 @@ pub fn start_guard_loop(
     tokio::task::spawn(async move {
         let mut last_master_health: Option<f32> = None;
         let mut last_bot_health: Option<f32> = None;
-        let mut last_totem_time: Option<std::time::Instant> = None;
+        let mut last_equip_time = std::time::Instant::now();
 
         loop {
             if !guarding_flag.load(Ordering::Relaxed) {
                 last_master_health = None;
                 last_bot_health = None;
-                last_totem_time = None;
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 continue;
+            }
+
+            // --- Ensure equipment every 5 seconds ---
+            if last_equip_time.elapsed().as_secs() >= 5 {
+                ensure_equipment(&bot).await;
+                last_equip_time = std::time::Instant::now();
             }
 
             // --- Detect damage to master or bot ---
@@ -68,20 +69,6 @@ pub fn start_guard_loop(
 
             let any_health_dropped = master_health_dropped || bot_health_dropped;
 
-            // --- Auto-equip totem when low health (cooldown 10s to prevent duplicates) ---
-            if let Some(hp) = last_bot_health {
-                if hp <= TOTEM_HEALTH_THRESHOLD {
-                    let should_equip = match last_totem_time {
-                        Some(t) => t.elapsed().as_secs() >= 10,
-                        None => true,
-                    };
-                    if should_equip {
-                        ensure_totem_equipped(&bot).await;
-                        last_totem_time = Some(std::time::Instant::now());
-                    }
-                }
-            }
-
             // --- Find nearest hostile and decide whether to attack ---
             if let Ok(Some(target)) = bot.nearest_entity_by::<(), With<AbstractMonster>>(|_| true)
             {
@@ -104,7 +91,7 @@ pub fn start_guard_loop(
                 }
             }
 
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
     });
 }
@@ -123,37 +110,56 @@ async fn get_bot_health(bot: &Client) -> Option<f32> {
     Some(health.0)
 }
 
-/// Find a totem of undying in the bot's inventory and equip it to the
-/// off-hand. If none is found, give one and equip it.
-async fn ensure_totem_equipped(bot: &Client) {
+/// Check if a slot contains an item matching a name pattern.
+fn slot_has_item(slot: &azalea::inventory::ItemStack, pattern: &str) -> bool {
+    if slot.is_empty() {
+        return false;
+    }
+    let name = format!("{:?}", slot.kind());
+    name.contains(pattern)
+}
+
+/// Ensure the bot always has:
+/// - Diamond sword in main hand (slot 0)
+/// - Totem of undying in off-hand (slot 40)
+async fn ensure_equipment(bot: &Client) {
     let menu = match bot.menu() {
         Ok(m) => m,
         Err(_) => return,
     };
+    let slots = menu.slots();
 
-    // Search inventory for a totem of undying
-    let totem_slot = menu.slots().iter().enumerate().find_map(|(i, slot)| {
-        if slot.is_empty() {
-            return None;
-        }
-        let name = format!("{:?}", slot.kind());
-        if name.contains("TotemOfUndying") {
-            Some(i)
+    // Check off-hand (slot 40) — must have totem
+    let offhand_ok = slots.get(40).map_or(false, |s| slot_has_item(s, "TotemOfUndying"));
+
+    // Check main hand — we'll use /item replace which always works
+    // Just ensure totem is in off-hand
+    if !offhand_ok {
+        // Check if totem exists anywhere in inventory (slots 0-35)
+        let has_totem = slots.iter().take(36).any(|s| slot_has_item(s, "TotemOfUndying"));
+
+        if has_totem {
+            bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
         } else {
-            None
-        }
-    });
-
-    match totem_slot {
-        Some(_) => {
-            // Totem exists in inventory — equip it to off-hand
-            bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
-        }
-        None => {
-            // No totem found — give one and equip it
+            // No totem anywhere — give and equip
             bot.chat("/give @s minecraft:totem_of_undying 1");
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(600)).await;
             bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
+        }
+    }
+
+    // Ensure sword is in main hand (slot 0)
+    let mainhand_ok = slots.get(0).map_or(false, |s| slot_has_item(s, "DiamondSword"));
+
+    if !mainhand_ok {
+        let has_sword = slots.iter().take(36).any(|s| slot_has_item(s, "DiamondSword"));
+
+        if has_sword {
+            bot.chat("/item replace entity @s weapon with minecraft:diamond_sword");
+        } else {
+            bot.chat("/give @s minecraft:diamond_sword 1");
+            tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+            bot.chat("/item replace entity @s weapon with minecraft:diamond_sword");
         }
     }
 }
