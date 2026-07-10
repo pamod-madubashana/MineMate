@@ -1,6 +1,10 @@
-#![allow(dead_code)]
+use azalea::pathfinder::PathfinderClientExt;
+use azalea::Client;
 
 use crate::ai::client::ToolCall;
+use crate::bot::client::BotClient;
+use crate::bot::handler::BOT_CLIENT;
+use crate::executor::security::SecurityValidator;
 use serde_json::Value;
 
 pub struct ToolExecutor;
@@ -147,6 +151,103 @@ impl ToolExecutor {
     }
 }
 
+/// Run the full pipeline: parse a tool call, validate, and execute it against the bot.
+pub async fn run_tool_call(tool_call: &ToolCall) -> Result<Option<String>, String> {
+    let executor = ToolExecutor::new();
+    let result = executor.execute(tool_call).map_err(|e| e.to_string())?;
+
+    let config = crate::config::AppConfig::load().map_err(|e| e.to_string())?;
+    let validator = SecurityValidator::new(config.bot.permission_mode);
+    validator.validate_tool_action(&result.action).map_err(|e| e.to_string())?;
+
+    execute_via_client(&result.action).await
+}
+
+/// Execute a parsed ToolAction against the live bot client.
+async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, String> {
+    let bot_client = get_bot_client().ok_or("Bot not started")?;
+    let azalea = get_azalea_client().ok_or("Bot not connected")?;
+
+    match action {
+        ToolAction::MoveTo { x, y, z } => {
+            let pos = azalea::Vec3::new(*x as f64, *y as f64, *z as f64);
+            azalea.start_goto(azalea::pathfinder::goals::RadiusGoal { pos, radius: 1.0 });
+            Ok(Some(format!("Moving to ({}, {}, {})", x, y, z)))
+        }
+        ToolAction::Follow { player } => {
+            bot_client.follow_stop.store(false, std::sync::atomic::Ordering::Relaxed);
+            bot_client.set_following(Some(player.clone()));
+            crate::bot::follow::start_following(
+                azalea.clone(),
+                player.clone(),
+                bot_client.follow_stop.clone(),
+            );
+            Ok(Some(format!("Now following {}", player)))
+        }
+        ToolAction::Attack => {
+            azalea.chat("/attack");
+            Ok(Some("Attacking nearest hostile".to_string()))
+        }
+        ToolAction::Reply { message } => {
+            azalea.chat(message);
+            Ok(None)
+        }
+        ToolAction::ExecuteCommand { command } => {
+            azalea.chat(&format!("/{}", command));
+            Ok(Some(format!("Executed /{}", command)))
+        }
+        ToolAction::ProtectPlayer { player } => {
+            bot_client.set_guarding(true);
+            bot_client.set_master(Some(player.clone()));
+            azalea.chat(&format!("I will protect you, {}!", player));
+            Ok(Some(format!("Now protecting {}", player)))
+        }
+        ToolAction::Teleport { x, y, z } => {
+            azalea.chat(&format!("/tp {} {} {}", x, y, z));
+            Ok(Some(format!("Teleported to ({}, {}, {})", x, y, z)))
+        }
+        ToolAction::GiveItem { player, item, count } => {
+            azalea.chat(&format!("/give {} {} {}", player, item, count));
+            Ok(Some(format!("Giving {} {} to {}", count, item, player)))
+        }
+        ToolAction::Mine { block, .. } => {
+            azalea.chat(&format!("/mine {} {}", block, 64));
+            Ok(Some(format!("Mining {}", block)))
+        }
+        ToolAction::Craft { item, count } => {
+            azalea.chat(&format!("/craft {} {}", item, count));
+            Ok(Some(format!("Crafting {} {}", count, item)))
+        }
+        ToolAction::PlaceBlock { block, x, y, z } => {
+            azalea.chat(&format!("/setblock {} {} {} {}", x, y, z, block));
+            Ok(Some(format!("Placed {} at ({}, {}, {})", block, x, y, z)))
+        }
+        ToolAction::BuildStructure { structure } => {
+            azalea.chat(&format!("Building {} is not yet implemented", structure));
+            Ok(Some(format!("Build {} - not implemented", structure)))
+        }
+        ToolAction::ScanArea { radius } => {
+            azalea.chat(&format!("Scanning area with radius {}", radius));
+            Ok(Some(format!("Scanned area radius {}", radius)))
+        }
+        ToolAction::SortChests => {
+            azalea.chat("I can't sort chests automatically yet");
+            Ok(Some("Sort chests - not implemented".to_string()))
+        }
+    }
+}
+
+fn get_bot_client() -> Option<BotClient> {
+    BOT_CLIENT.read().as_ref().cloned()
+}
+
+fn get_azalea_client() -> Option<Client> {
+    BOT_CLIENT
+        .read()
+        .as_ref()
+        .and_then(|c| c.azalea_client.read().clone())
+}
+
 #[derive(Debug, Clone)]
 pub struct ToolResult {
     pub action: ToolAction,
@@ -155,53 +256,18 @@ pub struct ToolResult {
 
 #[derive(Debug, Clone)]
 pub enum ToolAction {
-    MoveTo {
-        x: i32,
-        y: i32,
-        z: i32,
-    },
-    Follow {
-        player: String,
-    },
-    Mine {
-        block: String,
-        count: u32,
-    },
-    Craft {
-        item: String,
-        count: u32,
-    },
+    MoveTo { x: i32, y: i32, z: i32 },
+    Follow { player: String },
+    Mine { block: String, count: u32 },
+    Craft { item: String, count: u32 },
     Attack,
-    PlaceBlock {
-        block: String,
-        x: i32,
-        y: i32,
-        z: i32,
-    },
-    BuildStructure {
-        structure: String,
-    },
-    Reply {
-        message: String,
-    },
-    ExecuteCommand {
-        command: String,
-    },
-    ScanArea {
-        radius: u32,
-    },
-    GiveItem {
-        player: String,
-        item: String,
-        count: u32,
-    },
-    Teleport {
-        x: i32,
-        y: i32,
-        z: i32,
-    },
+    PlaceBlock { block: String, x: i32, y: i32, z: i32 },
+    BuildStructure { structure: String },
+    Reply { message: String },
+    ExecuteCommand { command: String },
+    ScanArea { radius: u32 },
+    GiveItem { player: String, item: String, count: u32 },
+    Teleport { x: i32, y: i32, z: i32 },
     SortChests,
-    ProtectPlayer {
-        player: String,
-    },
+    ProtectPlayer { player: String },
 }

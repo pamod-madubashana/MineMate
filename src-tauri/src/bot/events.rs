@@ -11,6 +11,8 @@ pub enum BotEvent {
     PositionChanged { x: f64, y: f64, z: f64 },
     BotStarted,
     BotStopped,
+    GuardModeChanged { enabled: bool },
+    CollectModeChanged { enabled: bool },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,6 +26,9 @@ pub struct BotStatus {
     pub y: f64,
     pub z: f64,
     pub uptime_seconds: u64,
+    pub guarding: bool,
+    pub following: Option<String>,
+    pub master: Option<String>,
 }
 
 impl Default for BotStatus {
@@ -38,6 +43,9 @@ impl Default for BotStatus {
             y: 0.0,
             z: 0.0,
             uptime_seconds: 0,
+            guarding: false,
+            following: None,
+            master: None,
         }
     }
 }
