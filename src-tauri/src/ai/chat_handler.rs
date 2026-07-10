@@ -32,7 +32,7 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
         Err(e) => {
             let err = format!("Config load failed: {}", e);
             tracing::error!("{}", err);
-            bot.chat(&format!("[MineMate Error] {}", err));
+            bot.chat(&format!("[Error] {}", err));
             return;
         }
     };

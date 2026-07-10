@@ -3,20 +3,25 @@ use std::sync::Arc;
 
 use azalea::entity::metadata::{AbstractMonster, Health};
 use azalea::ecs::query::With;
+use azalea::pathfinder::goals::RadiusGoal;
+use azalea::pathfinder::PathfinderClientExt;
 use azalea::Client;
 
 /// Detection radius: scan for hostile entities within this range.
-const GUARD_RADIUS: f64 = 30.0;
+const GUARD_RADIUS: f64 = 25.0;
 
 /// Melee attack range.
 const ATTACK_RANGE: f64 = 4.0;
 
+/// How close to get before attacking (pursuit distance).
+const PURSUIT_DISTANCE: f64 = 3.5;
+
 /// Start the guard loop. Runs a background task that:
 ///
-/// 1. Attacks any hostile entity within `GUARD_RADIUS` when the master
-///    or the bot itself takes damage (retaliation).
-/// 2. Attacks proactively when a hostile is within `ATTACK_RANGE`.
-/// 3. Always keeps diamond sword in main hand and totem in off-hand.
+/// 1. Seeks hostile entities within GUARD_RADIUS of the master and pursues them.
+/// 2. Retaliates when the bot or master takes damage.
+/// 3. Moves closer to enemies while attacking (like real players).
+/// 4. Always keeps diamond sword in main hand and totem in off-hand.
 pub fn start_guard_loop(
     bot: Client,
     guarding_flag: Arc<AtomicBool>,
@@ -26,11 +31,14 @@ pub fn start_guard_loop(
         let mut last_master_health: Option<f32> = None;
         let mut last_bot_health: Option<f32> = None;
         let mut last_equip_time = std::time::Instant::now();
+        let mut current_target: Option<String> = None;
 
         loop {
             if !guarding_flag.load(Ordering::Relaxed) {
                 last_master_health = None;
                 last_bot_health = None;
+                current_target = None;
+                bot.stop_pathfinding();
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 continue;
             }
@@ -41,8 +49,8 @@ pub fn start_guard_loop(
                 last_equip_time = std::time::Instant::now();
             }
 
-            // --- Detect damage to master or bot ---
-            let master_health_dropped = {
+            // --- Detect damage to master ---
+            let (master_health_dropped, master_took_damage) = {
                 let name = master.read().clone();
                 match name {
                     Some(name) => {
@@ -50,15 +58,16 @@ pub fn start_guard_loop(
                         let dropped = matches!((last_master_health, health),
                             (Some(prev), Some(curr)) if curr < prev);
                         last_master_health = health;
-                        dropped
+                        (dropped, dropped)
                     }
                     None => {
                         last_master_health = None;
-                        false
+                        (false, false)
                     }
                 }
             };
 
+            // --- Detect damage to bot ---
             let bot_health_dropped = {
                 let health = get_bot_health(&bot).await;
                 let dropped = matches!((last_bot_health, health),
@@ -69,29 +78,91 @@ pub fn start_guard_loop(
 
             let any_health_dropped = master_health_dropped || bot_health_dropped;
 
-            // --- Find nearest hostile and decide whether to attack ---
-            if let Ok(Some(target)) = bot.nearest_entity_by::<(), With<AbstractMonster>>(|_| true)
-            {
+            // --- Find nearest hostile entity ---
+            let nearest_hostile = bot
+                .nearest_entity_by::<(), With<AbstractMonster>>(|_| true)
+                .ok()
+                .flatten();
+
+            // --- Determine if we should attack ---
+            let mut should_attack = false;
+            let mut attack_target_pos = None;
+
+            if let Some(ref target) = nearest_hostile {
                 let distance_sq = match (bot.position(), target.position()) {
                     (Ok(bot_pos), Ok(target_pos)) => {
                         let dx = bot_pos.x - target_pos.x;
                         let dy = bot_pos.y - target_pos.y;
                         let dz = bot_pos.z - target_pos.z;
-                        dx * dx + dy * dy + dz * dz
+                        let d = dx * dx + dy * dy + dz * dz;
+                        attack_target_pos = Some(target_pos);
+                        d
                     }
                     _ => f64::MAX,
                 };
 
-                let in_melee_range = distance_sq <= ATTACK_RANGE * ATTACK_RANGE;
+                let in_attack_range = distance_sq <= ATTACK_RANGE * ATTACK_RANGE;
                 let in_guard_radius = distance_sq <= GUARD_RADIUS * GUARD_RADIUS;
 
-                if in_melee_range || (in_guard_radius && any_health_dropped) {
-                    let _ = target.look_at();
-                    target.attack();
+                // Attack if:
+                // 1. Enemy is in melee range (always attack)
+                // 2. Enemy is in guard radius AND we or master took damage
+                // 3. We have a current target (pursue until dead or out of range)
+                if in_attack_range {
+                    should_attack = true;
+                } else if in_guard_radius && any_health_dropped {
+                    should_attack = true;
+                } else if current_target.is_some() && in_guard_radius {
+                    should_attack = true;
+                }
+            } else {
+                // No hostile nearby — clear target
+                current_target = None;
+            }
+
+            // --- Execute attack behavior ---
+            if should_attack {
+                if let Some(ref target) = nearest_hostile {
+                    let distance_sq = match (bot.position(), target.position()) {
+                        (Ok(bot_pos), Ok(target_pos)) => {
+                            let dx = bot_pos.x - target_pos.x;
+                            let dy = bot_pos.y - target_pos.y;
+                            let dz = bot_pos.z - target_pos.z;
+                            dx * dx + dy * dy + dz * dz
+                        }
+                        _ => f64::MAX,
+                    };
+
+                    // If in range, attack
+                    if distance_sq <= ATTACK_RANGE * ATTACK_RANGE {
+                        let _ = target.look_at();
+                        target.attack();
+                    } else if distance_sq <= PURSUIT_DISTANCE * PURSUIT_DISTANCE {
+                        // Close enough — look at and attack
+                        let _ = target.look_at();
+                        target.attack();
+                    } else {
+                        // Too far — move closer (pursue)
+                        if let Some(target_pos) = attack_target_pos {
+                            bot.start_goto(RadiusGoal {
+                                pos: target_pos,
+                                radius: PURSUIT_DISTANCE,
+                            });
+                        }
+                    }
+                }
+            } else {
+                // No attack — stop pathfinding if we were pursuing
+                if current_target.is_some() {
+                    bot.stop_pathfinding();
+                    current_target = None;
                 }
             }
 
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            // Track current target
+            current_target = nearest_hostile.as_ref().map(|_| "hostile".to_string());
+
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
     });
 }
@@ -132,16 +203,12 @@ async fn ensure_equipment(bot: &Client) {
     // Check off-hand (slot 40) — must have totem
     let offhand_ok = slots.get(40).map_or(false, |s| slot_has_item(s, "TotemOfUndying"));
 
-    // Check main hand — we'll use /item replace which always works
-    // Just ensure totem is in off-hand
     if !offhand_ok {
-        // Check if totem exists anywhere in inventory (slots 0-35)
         let has_totem = slots.iter().take(36).any(|s| slot_has_item(s, "TotemOfUndying"));
 
         if has_totem {
             bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
         } else {
-            // No totem anywhere — give and equip
             bot.chat("/give @s minecraft:totem_of_undying 1");
             tokio::time::sleep(std::time::Duration::from_millis(600)).await;
             bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
