@@ -29,11 +29,13 @@ pub fn start_guard_loop(
     tokio::task::spawn(async move {
         let mut last_master_health: Option<f32> = None;
         let mut last_bot_health: Option<f32> = None;
+        let mut last_totem_time: Option<std::time::Instant> = None;
 
         loop {
             if !guarding_flag.load(Ordering::Relaxed) {
                 last_master_health = None;
                 last_bot_health = None;
+                last_totem_time = None;
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 continue;
             }
@@ -66,10 +68,17 @@ pub fn start_guard_loop(
 
             let any_health_dropped = master_health_dropped || bot_health_dropped;
 
-            // --- Auto-equip totem when low health ---
+            // --- Auto-equip totem when low health (cooldown 10s to prevent duplicates) ---
             if let Some(hp) = last_bot_health {
                 if hp <= TOTEM_HEALTH_THRESHOLD {
-                    ensure_totem_equipped(&bot).await;
+                    let should_equip = match last_totem_time {
+                        Some(t) => t.elapsed().as_secs() >= 10,
+                        None => true,
+                    };
+                    if should_equip {
+                        ensure_totem_equipped(&bot).await;
+                        last_totem_time = Some(std::time::Instant::now());
+                    }
                 }
             }
 
