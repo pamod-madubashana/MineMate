@@ -7,21 +7,20 @@ use azalea::pathfinder::goals::RadiusGoal;
 use azalea::pathfinder::PathfinderClientExt;
 use azalea::Client;
 
-/// Chase range — attack enemies within this distance.
-const ATTACK_RANGE: f64 = 6.0;
-
 /// Follow distance — how close to stay to the master.
 const FOLLOW_RADIUS: f32 = 10.0;
 
 /// How long to chase an enemy after damage is detected (seconds).
-const COMBAT_DURATION: u64 = 5;
+/// Long enough to chase down and kill the enemy.
+const COMBAT_DURATION: u64 = 30;
 
 /// Start the guard loop. Runs a background task that:
 ///
 /// 1. Continuously follows the master player.
-/// 2. Attacks enemies when the master or bot takes damage.
-/// 3. Chases the enemy for COMBAT_DURATION seconds.
-/// 4. Keeps totem of undying in off-hand.
+/// 2. Attacks ANY enemy when the master or bot takes damage (no distance limit).
+/// 3. Chases the enemy until dead or COMBAT_DURATION expires.
+/// 4. Returns to following master after combat ends.
+/// 5. Keeps totem of undying in off-hand.
 pub fn start_guard_loop(
     bot: Client,
     guarding_flag: Arc<AtomicBool>,
@@ -100,14 +99,14 @@ pub fn start_guard_loop(
             // --- Enter combat mode when damage detected ---
             if master_health_dropped || bot_health_dropped {
                 combat_until = Some(now + std::time::Duration::from_secs(COMBAT_DURATION));
-                tracing::info!("Combat triggered - searching for enemy");
+                tracing::info!("Combat triggered - chasing enemy");
             }
 
-            // --- Combat: chase and attack enemy ---
+            // --- Combat: chase and attack enemy (no distance limit) ---
             let in_combat = combat_until.map_or(false, |t| now < t);
 
             if in_combat {
-                // Find nearest hostile to the bot (within chase range)
+                // Find nearest hostile ANYWHERE (no distance filter)
                 let nearest_hostile = bot
                     .nearest_entities::<With<AbstractMonster>>()
                     .ok()
@@ -121,11 +120,7 @@ pub fn start_guard_loop(
                                 let dy = bot_pos.y - pos.y;
                                 let dz = bot_pos.z - pos.z;
                                 let dist_sq = dx * dx + dy * dy + dz * dz;
-                                if dist_sq <= ATTACK_RANGE * ATTACK_RANGE {
-                                    Some((e.clone(), dist_sq))
-                                } else {
-                                    None
-                                }
+                                Some((e.clone(), dist_sq))
                             })
                             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
                             .map(|(e, _)| e)
@@ -144,7 +139,7 @@ pub fn start_guard_loop(
                             let _ = target.look_at();
                             target.attack();
                         } else {
-                            // Chase the enemy
+                            // Chase the enemy (any distance)
                             bot.start_goto(RadiusGoal {
                                 pos: target_pos,
                                 radius: 2.0,
@@ -152,7 +147,8 @@ pub fn start_guard_loop(
                         }
                     }
                 } else {
-                    // No enemy found, stop chasing
+                    // No enemy found, end combat early
+                    combat_until = None;
                     bot.stop_pathfinding();
                 }
             } else {
