@@ -115,7 +115,7 @@ async fn get_bot_health(bot: &Client) -> Option<f32> {
 }
 
 /// Find a totem of undying in the bot's inventory and equip it to the
-/// off-hand. If none is found, request one via `/give`.
+/// off-hand. If none is found, give one and equip it.
 async fn ensure_totem_equipped(bot: &Client) {
     let menu = match bot.menu() {
         Ok(m) => m,
@@ -136,18 +136,15 @@ async fn ensure_totem_equipped(bot: &Client) {
     });
 
     match totem_slot {
-        Some(slot_index) => {
-            // Swap the totem into the off-hand slot (slot 40 in Player inventory).
-            // Use a QuickMove (shift-click) or Swap operation to move it to offhand.
-            // For simplicity, use the /replaceitem command via chat.
-            bot.chat(&format!(
-                "/replaceitem entity @s container.{} totem_of_undying",
-                slot_index
-            ));
+        Some(_) => {
+            // Totem exists in inventory — equip it to off-hand
+            bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
         }
         None => {
-            // No totem found — request one
-            bot.chat("/give @s totem_of_undying");
+            // No totem found — give one and equip it
+            bot.chat("/give @s minecraft:totem_of_undying 1");
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
         }
     }
 }
