@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/AI-NVIDIA%20NIM-76b900.svg" alt="NVIDIA NIM">
   <img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version 0.1.0">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="Platforms">
-  <img src="https://img.shields.io/github/license/pamod-madubashana/BotCraft" alt="License">
+  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT">
 </p>
 
 ---
