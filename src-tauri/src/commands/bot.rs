@@ -21,6 +21,14 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                 b.start_time.write().replace(std::time::Instant::now());
                 b.emit_event(BotEvent::BotStarted);
 
+                // Spawn equipment: give items after a short delay
+                let equip_bot = bot.clone();
+                tokio::task::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    tracing::info!("Equipping bot with starter items");
+                    equip_bot.chat("/give @s minecraft:diamond_sword 1");
+                });
+
                 // Start the guard background loop
                 let guard_bot = bot.clone();
                 let guard_flag = b.guarding.clone();
