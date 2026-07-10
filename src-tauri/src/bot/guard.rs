@@ -124,13 +124,10 @@ async fn ensure_totem_equipped(bot: &Client) {
 
     // Search inventory for a totem of undying
     let totem_slot = menu.slots().iter().enumerate().find_map(|(i, slot)| {
-        let item = slot.lock();
-        if item.is_empty() {
+        if slot.is_empty() {
             return None;
         }
-        let kind = item.kind();
-        // "totem_of_undying" — check the registry name
-        let name = format!("{:?}", kind);
+        let name = format!("{:?}", slot.kind());
         if name.contains("TotemOfUndying") {
             Some(i)
         } else {
