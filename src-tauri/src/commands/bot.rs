@@ -1,5 +1,9 @@
 use std::net::ToSocketAddrs;
 
+use azalea::player::GameProfileComponent;
+use azalea::prelude::*;
+use azalea::protocol::address::{ResolvedAddr, ServerAddr};
+
 use crate::bot::client::BotClient;
 use crate::bot::events::BotEvent;
 use crate::bot::events::BotStatus;
@@ -7,8 +11,6 @@ use crate::bot::handler::{BOT_CLIENT, BOT_RUNNING};
 use crate::config::AppConfig;
 use crate::executor::audit::get_audit_logger;
 use crate::executor::security::SecurityValidator;
-use azalea::prelude::*;
-use azalea::protocol::address::{ResolvedAddr, ServerAddr};
 
 async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
     match event {
@@ -25,6 +27,38 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                 let guard_flag = b.guarding.clone();
                 let master = b.master.clone();
                 crate::bot::guard::start_guard_loop(guard_bot, guard_flag, master);
+
+                // Default: find nearest player and follow them
+                let follow_bot = bot.clone();
+                let client = b.clone();
+                tokio::task::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    let players = match follow_bot.nearby_players() {
+                        Ok(p) => p,
+                        Err(e) => {
+                            tracing::error!("Failed to get nearby players: {}", e);
+                            return;
+                        }
+                    };
+                    let nearest = players.first().cloned();
+                    if let Some(player) = nearest {
+                        let name = match player
+                            .component::<GameProfileComponent>()
+                            .ok()
+                            .map(|g| g.0.name.clone())
+                        {
+                            Some(n) if !n.is_empty() => n,
+                            _ => return,
+                        };
+                        tracing::info!("Default follow: nearest player is {}", name);
+                        client.set_master(Some(name.clone()));
+                        client.set_guarding(true);
+                        client.follow_stop.store(false, std::sync::atomic::Ordering::Relaxed);
+                        client.set_following(Some(name.clone()));
+                        crate::bot::follow::start_following(follow_bot.clone(), name, client.follow_stop.clone());
+                        follow_bot.chat("I will protect you!");
+                    }
+                });
             }
         }
         azalea::Event::Disconnect(reason) => {
