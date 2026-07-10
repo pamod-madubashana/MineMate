@@ -59,6 +59,7 @@ impl BotClient {
 
     pub fn set_connected(&self, connected: bool) {
         *self.connected.write() = connected;
+        self.status.write().connected = connected;
     }
 
     pub fn update_status(&self, status: BotStatus) {
