@@ -1,6 +1,7 @@
+use azalea::ecs::query::With;
 use azalea::entity::metadata::AbstractMonster;
 use azalea::pathfinder::PathfinderClientExt;
-use azalea::ecs::query::With;
+use azalea::registry::builtin::BlockKind;
 use azalea::Client;
 
 use crate::ai::client::ToolCall;
@@ -225,9 +226,68 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
             azalea.chat(&format!("/give {} {} {}", player, item, count));
             Ok(Some(format!("Giving {} {} to {}", count, item, player)))
         }
-        ToolAction::Mine { block, .. } => {
-            azalea.chat(&format!("/mine {} {}", block, 64));
-            Ok(Some(format!("Mining {}", block)))
+        ToolAction::Mine { block, count } => {
+            let block_kind: BlockKind = match block.parse() {
+                Ok(k) => k,
+                Err(_) => {
+                    let msg = format!("Unknown block type '{}'", block);
+                    azalea.chat(&format!("[MineMate] {}", msg));
+                    return Ok(Some(msg));
+                }
+            };
+            let target_states = azalea::block::BlockStates::from([block_kind]);
+
+            let bot_pos = match azalea.entity().position() {
+                Ok(p) => p,
+                Err(e) => {
+                    let msg = format!("Can't get position: {}", e);
+                    azalea.chat(&format!("[MineMate] {}", msg));
+                    return Ok(Some(msg));
+                }
+            };
+            let search_origin = azalea::BlockPos::new(
+                bot_pos.x as i32, bot_pos.y as i32, bot_pos.z as i32,
+            );
+
+            let world = match azalea.world() {
+                Ok(w) => w,
+                Err(e) => {
+                    let msg = format!("World not available: {}", e);
+                    azalea.chat(&format!("[MineMate] {}", msg));
+                    return Ok(Some(msg));
+                }
+            };
+            let block_pos = {
+                let w = world.read();
+                w.find_block(search_origin, &target_states)
+            };
+            let block_pos = match block_pos {
+                Some(p) => p,
+                None => {
+                    let msg = format!("No '{}' found nearby", block);
+                    azalea.chat(&format!("[MineMate] {}", msg));
+                    return Ok(Some(msg));
+                }
+            };
+
+            // Walk within reach of the block
+            let target = azalea::Vec3::new(
+                block_pos.x as f64 + 0.5,
+                block_pos.y as f64,
+                block_pos.z as f64 + 0.5,
+            );
+            azalea.goto(azalea::pathfinder::goals::RadiusGoal {
+                pos: target,
+                radius: 2.0,
+            })
+            .await;
+
+            // Look at the block and mine it
+            azalea.look_at(block_pos.center());
+            azalea.mine(block_pos).await;
+
+            let msg = format!("Mined {} at ({}, {}, {})", block, block_pos.x, block_pos.y, block_pos.z);
+            Ok(Some(msg))
         }
         ToolAction::Craft { item, count } => {
             azalea.chat(&format!("/craft {} {}", item, count));
