@@ -1,5 +1,8 @@
 # Dependencies
 node_modules/
+
+# user-specific config — generated at runtime in app data dir
+config/default.toml
 .pnp
 .pnp.js
 

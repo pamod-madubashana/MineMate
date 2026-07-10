@@ -102,6 +102,18 @@ impl Default for AppConfig {
 
 impl AppConfig {
     fn config_path() -> std::path::PathBuf {
+        if let Some(config_dir) = dirs::config_dir() {
+            config_dir.join("MineMate").join("config").join("default.toml")
+        } else {
+            let dir = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                .unwrap_or_else(|| std::path::PathBuf::from("."));
+            dir.join("config").join("default.toml")
+        }
+    }
+
+    fn legacy_config_path() -> std::path::PathBuf {
         let dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
@@ -111,13 +123,27 @@ impl AppConfig {
 
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
         let config_path = Self::config_path();
+        let legacy_path = Self::legacy_config_path();
+
+        // Migrate from legacy path if it exists and new path doesn't
+        if !config_path.exists() && legacy_path.exists() {
+            if let Some(parent) = config_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            if let Err(e) = std::fs::copy(&legacy_path, &config_path) {
+                tracing::warn!("Failed to migrate config from {:?}: {}", legacy_path, e);
+            }
+        }
+
         if config_path.exists() {
             let content = std::fs::read_to_string(&config_path)?;
             Ok(toml::from_str(&content)?)
         } else {
             let config = Self::default();
             let content = toml::to_string_pretty(&config)?;
-            std::fs::create_dir_all(config_path.parent().unwrap())?;
+            if let Some(parent) = config_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
             std::fs::write(&config_path, content)?;
             Ok(config)
         }
