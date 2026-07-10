@@ -11,7 +11,7 @@ use azalea::Client;
 const ATTACK_RANGE: f64 = 4.0;
 
 /// Follow distance — how close to stay to the master.
-const FOLLOW_RADIUS: f64 = 2.0;
+const FOLLOW_RADIUS: f32 = 2.0;
 
 /// Start the guard loop. Runs a background task that:
 ///
