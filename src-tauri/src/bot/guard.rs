@@ -31,11 +31,13 @@ pub fn start_guard_loop(
         let mut last_master_health: Option<f32> = None;
         let mut last_bot_health: Option<f32> = None;
         let mut last_totem_time = std::time::Instant::now();
+        let mut pursuing = false;
 
         loop {
             if !guarding_flag.load(Ordering::Relaxed) {
                 last_master_health = None;
                 last_bot_health = None;
+                pursuing = false;
                 bot.stop_pathfinding();
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 continue;
@@ -82,19 +84,14 @@ pub fn start_guard_loop(
                 .ok()
                 .flatten();
 
-            // --- Determine if we should attack ---
-            let mut should_attack = false;
-            let mut attack_target_pos = None;
-
+            // --- Determine behavior ---
             if let Some(ref target) = nearest_hostile {
                 let distance_sq = match (bot.position(), target.position()) {
                     (Ok(bot_pos), Ok(target_pos)) => {
                         let dx = bot_pos.x - target_pos.x;
                         let dy = bot_pos.y - target_pos.y;
                         let dz = bot_pos.z - target_pos.z;
-                        let d = dx * dx + dy * dy + dz * dz;
-                        attack_target_pos = Some(target_pos);
-                        d
+                        dx * dx + dy * dy + dz * dz
                     }
                     _ => f64::MAX,
                 };
@@ -102,38 +99,40 @@ pub fn start_guard_loop(
                 let in_attack_range = distance_sq <= ATTACK_RANGE * ATTACK_RANGE;
                 let in_guard_radius = distance_sq <= GUARD_RADIUS * GUARD_RADIUS;
 
-                if in_attack_range {
-                    should_attack = true;
-                } else if in_guard_radius && any_health_dropped {
-                    should_attack = true;
-                }
-            }
+                // Start pursuing if:
+                // 1. Enemy in guard radius AND health dropped (retaliation)
+                // 2. Already pursuing and enemy still in guard radius
+                if in_guard_radius && (any_health_dropped || pursuing) {
+                    pursuing = true;
 
-            // --- Execute attack behavior ---
-            if should_attack {
-                if let Some(ref target) = nearest_hostile {
-                    let distance_sq = match (bot.position(), target.position()) {
-                        (Ok(bot_pos), Ok(target_pos)) => {
-                            let dx = bot_pos.x - target_pos.x;
-                            let dy = bot_pos.y - target_pos.y;
-                            let dz = bot_pos.z - target_pos.z;
-                            dx * dx + dy * dy + dz * dz
-                        }
-                        _ => f64::MAX,
-                    };
-
-                    if distance_sq <= ATTACK_RANGE * ATTACK_RANGE {
+                    if in_attack_range {
+                        // In range — attack
                         let _ = target.look_at();
                         target.attack();
                     } else {
-                        // Pursue enemy
-                        if let Some(target_pos) = attack_target_pos {
+                        // Out of range — pursue
+                        if let Ok(target_pos) = target.position() {
                             bot.start_goto(RadiusGoal {
                                 pos: target_pos,
                                 radius: PURSUIT_DISTANCE,
                             });
                         }
                     }
+                } else if in_guard_radius && !pursuing {
+                    // New enemy in range but no damage yet — pursue proactively
+                    pursuing = true;
+                    if let Ok(target_pos) = target.position() {
+                        bot.start_goto(RadiusGoal {
+                            pos: target_pos,
+                            radius: PURSUIT_DISTANCE,
+                        });
+                    }
+                }
+            } else {
+                // No hostile — stop pursuing
+                if pursuing {
+                    bot.stop_pathfinding();
+                    pursuing = false;
                 }
             }
 
