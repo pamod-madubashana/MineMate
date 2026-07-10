@@ -132,14 +132,14 @@ export default function ConfigPanel() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div>
-              <label className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", display: "block", marginBottom: "4px" }}>NVIDIA NIM API Key</label>
+              <label className="font-mono" style={{ fontSize: "12px", color: "var(--mc-gray)", display: "block", marginBottom: "4px" }}>Google AI Studio API Key</label>
               <input
                 className="mc-input"
                 style={{ width: "100%" }}
                 type="password"
                 value={config.ai.api_key}
                 onChange={(e) => setConfig({ ...config, ai: { ...config.ai, api_key: e.target.value } })}
-                placeholder="nvapi-..."
+                placeholder="AIza..."
               />
             </div>
             <div>
@@ -150,9 +150,9 @@ export default function ConfigPanel() {
                 value={config.ai.model}
                 onChange={(e) => setConfig({ ...config, ai: { ...config.ai, model: e.target.value } })}
               >
-                <option value="meta/llama-3.3-70b-instruct">Llama 3.3 70B</option>
-                <option value="qwen/qwen2.5-coder-32b-instruct">Qwen 2.5 Coder 32B</option>
-                <option value="deepseek-ai/deepseek-r1">DeepSeek R1</option>
+                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                <option value="gemini-3.1-pro">Gemini 3.1 Pro</option>
+                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite</option>
               </select>
             </div>
             <div>
