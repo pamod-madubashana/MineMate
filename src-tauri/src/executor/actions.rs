@@ -18,9 +18,9 @@ impl ToolExecutor {
     }
 
     pub fn execute(&self, tool_call: &ToolCall) -> Result<ToolResult, Box<dyn std::error::Error>> {
-        let args: Value = serde_json::from_str(&tool_call.function.arguments)?;
+        let args: Value = serde_json::from_str(&tool_call.arguments)?;
 
-        match tool_call.function.name.as_str() {
+        match tool_call.name.as_str() {
             "move_to" => {
                 let x = args["x"].as_i64().unwrap_or(0) as i32;
                 let y = args["y"].as_i64().unwrap_or(0) as i32;
@@ -149,7 +149,7 @@ impl ToolExecutor {
                     message: format!("Protecting {}", player),
                 })
             }
-            _ => Err(format!("Unknown tool: {}", tool_call.function.name).into()),
+            _ => Err(format!("Unknown tool: {}", tool_call.name).into()),
         }
     }
 }
