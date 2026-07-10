@@ -98,39 +98,79 @@ pub fn start_guard_loop(
                 }
             }
 
-            // --- Find nearest hostile entity ---
-            let nearest_hostile = bot
-                .nearest_entity_by::<(), With<AbstractMonster>>(|_| true)
-                .ok()
-                .flatten();
+            // --- Find hostile entities near the master ---
+            let master_pos = {
+                let name = master.read().clone();
+                name.and_then(|n| {
+                    let uuid = bot.player_uuid_by_username(&n).ok()??;
+                    let entity = bot.entity_by_uuid(uuid)?;
+                    entity.position().ok()
+                })
+            };
+
+            // Get all hostile entities and find the closest one to the master
+            let nearest_hostile = if let Some(master_position) = master_pos {
+                bot.nearest_entities::<With<AbstractMonster>>()
+                    .ok()
+                    .map(|entities| {
+                        entities
+                            .iter()
+                            .filter_map(|e| {
+                                let pos = e.position().ok()?;
+                                let dx = master_position.x - pos.x;
+                                let dy = master_position.y - pos.y;
+                                let dz = master_position.z - pos.z;
+                                let dist_sq = dx * dx + dy * dy + dz * dz;
+                                if dist_sq <= GUARD_RADIUS * GUARD_RADIUS {
+                                    Some((e.clone(), dist_sq))
+                                } else {
+                                    None
+                                }
+                            })
+                            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+                            .map(|(e, _)| e)
+                    })
+                    .flatten()
+            } else {
+                None
+            };
 
             // --- Determine behavior ---
             if let Some(ref target) = nearest_hostile {
-                let distance_sq = match (bot.position(), target.position()) {
-                    (Ok(bot_pos), Ok(target_pos)) => {
-                        let dx = bot_pos.x - target_pos.x;
-                        let dy = bot_pos.y - target_pos.y;
-                        let dz = bot_pos.z - target_pos.z;
+                // Distance from hostile to master
+                let distance_to_master_sq = match (master_pos, target.position()) {
+                    (Some(mp), Ok(tp)) => {
+                        let dx = mp.x - tp.x;
+                        let dy = mp.y - tp.y;
+                        let dz = mp.z - tp.z;
                         dx * dx + dy * dy + dz * dz
                     }
                     _ => f64::MAX,
                 };
 
-                let in_attack_range = distance_sq <= ATTACK_RANGE * ATTACK_RANGE;
-                let in_guard_radius = distance_sq <= GUARD_RADIUS * GUARD_RADIUS;
+                // Distance from bot to hostile
+                let distance_to_bot_sq = match (bot.position(), target.position()) {
+                    (Ok(bp), Ok(tp)) => {
+                        let dx = bp.x - tp.x;
+                        let dy = bp.y - tp.y;
+                        let dz = bp.z - tp.z;
+                        dx * dx + dy * dy + dz * dz
+                    }
+                    _ => f64::MAX,
+                };
 
-                // Start pursuing if:
-                // 1. Enemy in guard radius AND health dropped (retaliation)
-                // 2. Already pursuing and enemy still in guard radius
-                if in_guard_radius && (any_health_dropped || pursuing) {
+                let in_attack_range = distance_to_bot_sq <= ATTACK_RANGE * ATTACK_RANGE;
+                let near_master = distance_to_master_sq <= GUARD_RADIUS * GUARD_RADIUS;
+
+                // Pursue if enemy is near master or we're already attacking
+                if near_master || pursuing {
                     pursuing = true;
 
                     if in_attack_range {
-                        // In range — attack
                         let _ = target.look_at();
                         target.attack();
                     } else {
-                        // Out of range — pursue
+                        // Pursue enemy
                         if let Ok(target_pos) = target.position() {
                             bot.start_goto(RadiusGoal {
                                 pos: target_pos,
@@ -138,18 +178,9 @@ pub fn start_guard_loop(
                             });
                         }
                     }
-                } else if in_guard_radius && !pursuing {
-                    // New enemy in range but no damage yet — pursue proactively
-                    pursuing = true;
-                    if let Ok(target_pos) = target.position() {
-                        bot.start_goto(RadiusGoal {
-                            pos: target_pos,
-                            radius: PURSUIT_DISTANCE,
-                        });
-                    }
                 }
             } else {
-                // No hostile — stop pursuing
+                // No hostile near master — stop pursuing
                 if pursuing {
                     bot.stop_pathfinding();
                     pursuing = false;
