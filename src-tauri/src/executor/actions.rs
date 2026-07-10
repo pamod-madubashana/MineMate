@@ -1,4 +1,6 @@
+use azalea::entity::metadata::AbstractMonster;
 use azalea::pathfinder::PathfinderClientExt;
+use azalea::ecs::query::With;
 use azalea::Client;
 
 use crate::ai::client::ToolCall;
@@ -185,8 +187,21 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
             Ok(Some(format!("Now following {}", player)))
         }
         ToolAction::Attack => {
-            azalea.chat("/attack");
-            Ok(Some("Attacking nearest hostile".to_string()))
+            match azalea.nearest_entity_by::<(), With<AbstractMonster>>(|_| true) {
+                Ok(Some(target)) => {
+                    let _ = target.look_at();
+                    target.attack();
+                    Ok(Some("Attacking nearest hostile".to_string()))
+                }
+                Ok(None) => {
+                    azalea.chat("[MineMate] No hostile entities nearby");
+                    Ok(Some("No hostile entities nearby".to_string()))
+                }
+                Err(e) => {
+                    tracing::error!("Failed to query hostile entity: {}", e);
+                    Ok(Some(format!("Error: {}", e)))
+                }
+            }
         }
         ToolAction::Reply { message } => {
             azalea.chat(message);
