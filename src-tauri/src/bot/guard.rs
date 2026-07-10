@@ -183,7 +183,10 @@ async fn ensure_totem_equipped(bot: &Client) {
     bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
 }
 
-/// Give a totem of undying to a player via chat command.
+/// Equip a totem of undying directly into a player's off-hand.
 async fn give_totem_to_player(bot: &Client, player: &str) {
-    bot.chat(&format!("/give {} minecraft:totem_of_undying 1", player));
+    bot.chat(&format!(
+        "/item replace entity {} weapon.offhand with minecraft:totem_of_undying",
+        player
+    ));
 }
