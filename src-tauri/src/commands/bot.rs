@@ -33,6 +33,8 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                     equip_bot.chat("/enchant @s minecraft:fire_aspect 2");
                     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                     equip_bot.chat("/enchant @s minecraft:sweeping_edge 2");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/give @s minecraft:totem_of_undying 1");
                 });
 
                 // Start the guard background loop
