@@ -16,6 +16,9 @@ const ATTACK_RANGE: f64 = 4.0;
 /// How close to get before attacking (pursuit distance).
 const PURSUIT_DISTANCE: f32 = 3.5;
 
+/// Health drop threshold to detect totem consumption on master (10 HP).
+const TOTEM_DAMAGE_THRESHOLD: f32 = 10.0;
+
 /// Start the guard loop. Runs a background task that:
 ///
 /// 1. Seeks hostile entities within GUARD_RADIUS of the master and pursues them.
@@ -31,6 +34,7 @@ pub fn start_guard_loop(
         let mut last_master_health: Option<f32> = None;
         let mut last_bot_health: Option<f32> = None;
         let mut last_totem_time = std::time::Instant::now();
+        let mut last_master_totem_time = std::time::Instant::now();
         let mut pursuing = false;
 
         loop {
@@ -51,6 +55,18 @@ pub fn start_guard_loop(
                         let health = get_player_health(&bot, &name).await;
                         let dropped = matches!((last_master_health, health),
                             (Some(prev), Some(curr)) if curr < prev);
+
+                        // Detect large health drop = totem consumed
+                        if let (Some(prev), Some(curr)) = (last_master_health, health) {
+                            if prev - curr >= TOTEM_DAMAGE_THRESHOLD
+                                && last_master_totem_time.elapsed().as_secs() >= 15
+                            {
+                                tracing::info!("Master totem likely consumed, giving new one");
+                                give_totem_to_player(&bot, &name).await;
+                                last_master_totem_time = std::time::Instant::now();
+                            }
+                        }
+
                         last_master_health = health;
                         dropped
                     }
@@ -161,4 +177,9 @@ async fn ensure_totem_equipped(bot: &Client) {
     bot.chat("/give @s minecraft:totem_of_undying 1");
     tokio::time::sleep(std::time::Duration::from_millis(600)).await;
     bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
+}
+
+/// Give a totem of undying to a player via chat command.
+async fn give_totem_to_player(bot: &Client, player: &str) {
+    bot.chat(&format!("/give {} minecraft:totem_of_undying 1", player));
 }
