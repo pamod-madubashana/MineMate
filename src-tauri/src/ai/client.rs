@@ -98,7 +98,10 @@ pub struct NimClient {
 impl NimClient {
     pub fn new(api_key: String, model: String) -> Self {
         Self {
-            client: Client::new(),
+            client: Client::builder()
+                .no_proxy()
+                .build()
+                .expect("Failed to build reqwest client with no_proxy"),
             api_key,
             model,
             request_count: Arc::new(RwLock::new(0)),
@@ -134,8 +137,10 @@ impl NimClient {
             .await?;
 
         if !response.status().is_success() {
+            let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            return Err(format!("NIM API error: {}", error_text).into());
+            tracing::error!("NIM API returned {}: {}", status, error_text);
+            return Err(format!("NIM API error ({}): {}", status, error_text).into());
         }
 
         let completion: ChatCompletion = response.json().await?;
@@ -172,8 +177,10 @@ impl NimClient {
             .await?;
 
         if !response.status().is_success() {
+            let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            return Err(format!("NIM API error: {}", error_text).into());
+            tracing::error!("NIM API returned {}: {}", status, error_text);
+            return Err(format!("NIM API error ({}): {}", status, error_text).into());
         }
 
         let mut buffer = String::new();
