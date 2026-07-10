@@ -17,7 +17,14 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
             if let Some(b) = BOT_CLIENT.read().as_ref() {
                 b.azalea_client.write().replace(bot.clone());
                 b.set_connected(true);
+                b.start_time.write().replace(std::time::Instant::now());
                 b.emit_event(BotEvent::BotStarted);
+
+                // Start the guard background loop
+                let guard_bot = bot.clone();
+                let guard_flag = b.guarding.clone();
+                let master = b.master.clone();
+                crate::bot::guard::start_guard_loop(guard_bot, guard_flag, master);
             }
         }
         azalea::Event::Disconnect(reason) => {
@@ -287,5 +294,44 @@ pub async fn stop_following() -> Result<(), String> {
     }
 
     get_audit_logger().log_success("stop_following", None, "Stopped following");
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_guard_mode(enabled: bool) -> Result<(), String> {
+    tracing::info!("Setting guard mode: {}", enabled);
+
+    let bot = BOT_CLIENT.read();
+    let client = bot.as_ref().ok_or_else(|| "Bot not started".to_string())?;
+    client.set_guarding(enabled);
+
+    if enabled {
+        if let Some(azalea) = client.azalea_client.read().as_ref() {
+            azalea.chat("Guard mode activated!");
+        }
+    }
+
+    get_audit_logger().log_success("set_guard_mode", None, if enabled { "Enabled" } else { "Disabled" });
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_guard_status() -> Result<bool, String> {
+    let bot = BOT_CLIENT.read();
+    match bot.as_ref() {
+        Some(client) => Ok(client.is_guarding()),
+        None => Ok(false),
+    }
+}
+
+#[tauri::command]
+pub async fn set_master_player(player: String) -> Result<(), String> {
+    tracing::info!("Setting master: {}", player);
+
+    let bot = BOT_CLIENT.read();
+    let client = bot.as_ref().ok_or_else(|| "Bot not started".to_string())?;
+    client.set_master(Some(player.clone()));
+
+    get_audit_logger().log_success("set_master", Some(&player), "Master set");
     Ok(())
 }

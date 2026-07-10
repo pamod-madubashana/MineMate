@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::ai::client::ChatMessage;
 use crate::bot::events::BotStatus;
 
@@ -8,6 +6,8 @@ pub struct AiContextBuilder {
     inventory: Vec<String>,
     nearby_players: Vec<String>,
     recent_chat: Vec<String>,
+    sender: Option<String>,
+    player_message: Option<String>,
 }
 
 impl AiContextBuilder {
@@ -17,6 +17,8 @@ impl AiContextBuilder {
             inventory: Vec::new(),
             nearby_players: Vec::new(),
             recent_chat: Vec::new(),
+            sender: None,
+            player_message: None,
         }
     }
 
@@ -35,14 +37,33 @@ impl AiContextBuilder {
         self
     }
 
-    pub fn build_system_message(&self) -> ChatMessage {
+    pub fn with_sender(mut self, sender: String) -> Self {
+        self.sender = Some(sender);
+        self
+    }
+
+    pub fn with_player_message(mut self, message: String) -> Self {
+        self.player_message = Some(message);
+        self
+    }
+
+    fn build_system_message(&self) -> ChatMessage {
         ChatMessage {
             role: "system".to_string(),
-            content: "You are MineMate, an intelligent Minecraft assistant bot. You help players with building, mining, farming, combat, and general Minecraft questions. You can perform actions using tools. Always respond with either a tool call or a helpful chat message. Be concise and friendly. Never execute arbitrary server commands without explicit player request.".to_string(),
+            content: format!(
+                "You are MineMate, an intelligent Minecraft assistant bot on this server. \
+                 You help players with building, mining, farming, combat, and general questions. \
+                 You can perform actions using tools: move_to, follow, mine, craft, attack, \
+                 place_block, reply, execute_command, give_item, teleport, protect_player, and more. \
+                 When a player asks you to do something, use the appropriate tool. \
+                 If you just need to respond in chat, use the reply tool. \
+                 Be concise and friendly. Your master is {}.",
+                self.status.master.as_deref().unwrap_or("everyone")
+            ),
         }
     }
 
-    pub fn build_context_message(&self) -> ChatMessage {
+    fn build_context_message(&self) -> ChatMessage {
         let inventory_str = if self.inventory.is_empty() {
             "Empty".to_string()
         } else {
@@ -55,35 +76,30 @@ impl AiContextBuilder {
             self.nearby_players.join(", ")
         };
 
-        let chat_str = if self.recent_chat.is_empty() {
-            "None".to_string()
-        } else {
-            self.recent_chat.last().unwrap_or(&String::new()).clone()
-        };
+        let message = self.player_message.as_deref().unwrap_or("No message");
+        let sender = self.sender.as_deref().unwrap_or("someone");
 
         ChatMessage {
             role: "user".to_string(),
             content: format!(
-                r#"Current State:
-- Health: {}/20
-- Food: {}/20
-- Position: x={}, y={}, z={}
-
+                r#"State:
+- Health: {:.0}/20
+- Food: {:.0}/20
+- Position: ({:.0}, {:.0}, {:.0})
 Inventory: {}
+Players nearby: {}
+Guarding: {}
 
-Nearby Players: {}
-
-Recent Chat: {}
-
-What should I do? Respond with a tool call or helpful message."#,
+Player {} says: {}
+Respond using a tool call or a brief chat reply."#,
                 self.status.health,
                 self.status.food,
-                self.status.x as i32,
-                self.status.y as i32,
-                self.status.z as i32,
+                self.status.x, self.status.y, self.status.z,
                 inventory_str,
                 players_str,
-                chat_str
+                if self.status.guarding { "Yes" } else { "No" },
+                sender,
+                message,
             ),
         }
     }

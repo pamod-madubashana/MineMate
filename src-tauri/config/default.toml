@@ -16,6 +16,7 @@ max_tokens = 1024
 [automation]
 auto_sleep = true
 auto_eat = true
+auto_respawn = true
 auto_reconnect = true
 welcome_messages = true
 starter_kit_on_respawn = true
