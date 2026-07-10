@@ -43,7 +43,7 @@ pub fn start_following(bot: Client, player_name: String, should_stop: Arc<Atomic
                 });
             }
 
-            tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
     });
 }
