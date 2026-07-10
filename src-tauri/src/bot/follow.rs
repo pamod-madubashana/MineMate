@@ -39,7 +39,7 @@ pub fn start_following(bot: Client, player_name: String, should_stop: Arc<Atomic
                 last_target = Some(target_pos);
                 bot.start_goto(RadiusGoal {
                     pos: target_pos,
-                    radius: 3.5,
+                    radius: 5.0,
                 });
             }
 
