@@ -120,15 +120,10 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
         }
     };
 
-    let choice = match response.choices.first() {
-        Some(c) => c,
-        None => return,
-    };
-
     // Handle tool calls
-    if let Some(tool_calls) = &choice.message.tool_calls {
+    if let Some(tool_calls) = &response.tool_calls {
         for tool_call in tool_calls {
-            tracing::info!("AI requested tool: {}", tool_call.function.name);
+            tracing::info!("AI requested tool: {}", tool_call.name);
             match run_tool_call(tool_call).await {
                 Ok(Some(reply)) => {
                     bot.chat(&reply);
@@ -143,7 +138,7 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
     }
 
     // Fall back to text reply
-    if let Some(content) = &choice.message.content {
+    if let Some(content) = &response.content {
         let reply = content.trim();
         if !reply.is_empty() {
             bot.chat(reply);

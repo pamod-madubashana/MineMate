@@ -34,7 +34,7 @@ pub fn start_guard_loop(
             if !guarding_flag.load(Ordering::Relaxed) {
                 last_master_health = None;
                 last_bot_health = None;
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 continue;
             }
 
@@ -95,7 +95,7 @@ pub fn start_guard_loop(
                 }
             }
 
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
     });
 }
