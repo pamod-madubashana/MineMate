@@ -1,7 +1,9 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+use azalea::entity::metadata::AbstractMonster;
 use azalea::pathfinder::PathfinderClientExt;
+use azalea::ecs::query::With;
 use azalea::Client;
 
 /// Start the guard loop. Runs a background task that periodically attacks
@@ -18,8 +20,11 @@ pub fn start_guard_loop(
                 continue;
             }
 
-            // Attack nearest hostile entity
-            bot.chat("/attack");
+            // Attack nearest hostile entity using native azalea API
+            if let Ok(Some(target)) = bot.nearest_entity_by::<(), With<AbstractMonster>>(|_| true) {
+                let _ = target.look_at();
+                target.attack();
+            }
 
             // Stay near master if set
             if let Some(master_name) = master.read().as_ref().cloned() {
