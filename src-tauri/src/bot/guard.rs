@@ -16,9 +16,6 @@ const ATTACK_RANGE: f64 = 4.0;
 /// How close to get before attacking (pursuit distance).
 const PURSUIT_DISTANCE: f32 = 3.5;
 
-/// Health drop threshold to detect totem consumption on master (10 HP).
-const TOTEM_DAMAGE_THRESHOLD: f32 = 10.0;
-
 /// Start the guard loop. Runs a background task that:
 ///
 /// 1. Seeks hostile entities within GUARD_RADIUS of the master and pursues them.
@@ -53,12 +50,14 @@ pub fn start_guard_loop(
                 match name {
                     Some(name) => {
                         let health = get_player_health(&bot, &name).await;
-                        let dropped = matches!((last_master_health, health),
-                            (Some(prev), Some(curr)) if curr < prev);
+                        let prev = last_master_health;
+                        let dropped = matches!((prev, health),
+                            (Some(p), Some(c)) if c < p);
 
-                        // Detect large health drop = totem consumed
-                        if let (Some(prev), Some(curr)) = (last_master_health, health) {
-                            if prev - curr >= TOTEM_DAMAGE_THRESHOLD
+                        // Detect master totem consumed (health was low, now increased)
+                        if let (Some(prev_hp), Some(curr_hp)) = (prev, health) {
+                            if curr_hp > prev_hp
+                                && prev_hp <= 10.0
                                 && last_master_totem_time.elapsed().as_secs() >= 15
                             {
                                 tracing::info!("Master totem likely consumed, giving new one");
@@ -78,20 +77,25 @@ pub fn start_guard_loop(
             };
 
             // --- Detect damage to bot (totem consumed) ---
-            let bot_health_dropped = {
+            let (bot_health_dropped, bot_prev_health) = {
                 let health = get_bot_health(&bot).await;
-                let dropped = matches!((last_bot_health, health),
-                    (Some(prev), Some(curr)) if curr < prev);
+                let prev = last_bot_health;
+                let dropped = matches!((prev, health),
+                    (Some(p), Some(c)) if c < p);
                 last_bot_health = health;
-                dropped
+                (dropped, prev)
             };
 
             let any_health_dropped = master_health_dropped || bot_health_dropped;
 
-            // --- Re-equip totem after it's consumed (health dropped) with cooldown ---
-            if bot_health_dropped && last_totem_time.elapsed().as_secs() >= 10 {
-                ensure_totem_equipped(&bot).await;
-                last_totem_time = std::time::Instant::now();
+            // --- Detect totem consumed on bot (health was low, now increased) ---
+            if let (Some(prev_hp), Some(curr_hp)) = (bot_prev_health, last_bot_health) {
+                // Health increase while previously low = totem healed us
+                if curr_hp > prev_hp && prev_hp <= 10.0 && last_totem_time.elapsed().as_secs() >= 5 {
+                    tracing::info!("Bot totem consumed, re-equipping");
+                    ensure_totem_equipped(&bot).await;
+                    last_totem_time = std::time::Instant::now();
+                }
             }
 
             // --- Find nearest hostile entity ---
