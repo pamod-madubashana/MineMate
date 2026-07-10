@@ -10,6 +10,7 @@ use azalea::Client;
 pub fn start_following(bot: Client, player_name: String, should_stop: Arc<AtomicBool>) {
     tokio::task::spawn(async move {
         let name = player_name.clone();
+        let mut last_target: Option<azalea::Vec3> = None;
         loop {
             if should_stop.load(Ordering::Relaxed) {
                 bot.stop_pathfinding();
@@ -24,12 +25,25 @@ pub fn start_following(bot: Client, player_name: String, should_stop: Arc<Atomic
                 }
             };
 
-            bot.start_goto(RadiusGoal {
-                pos: target_pos,
-                radius: 2.0,
-            });
+            // Only re-path if the target moved significantly or we reached the destination
+            let should_repath = match last_target {
+                Some(last) => {
+                    let dx = target_pos.x - last.x;
+                    let dz = target_pos.z - last.z;
+                    dx * dx + dz * dz > 4.0 || bot.is_goto_target_reached()
+                }
+                None => true,
+            };
 
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            if should_repath {
+                last_target = Some(target_pos);
+                bot.start_goto(RadiusGoal {
+                    pos: target_pos,
+                    radius: 2.0,
+                });
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
         }
     });
 }
