@@ -46,6 +46,7 @@ yarn-error.log*
 .graphifyignore
 graphify-out/
 stitch_minemate_ai_control_panel/
+minecraft-helper-bot/
 
 # Database
 database/
