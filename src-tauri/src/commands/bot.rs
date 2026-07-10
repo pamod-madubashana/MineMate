@@ -35,6 +35,11 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                     equip_bot.chat("/enchant @s minecraft:sweeping_edge 2");
                     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                     equip_bot.chat("/give @s minecraft:totem_of_undying 1");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/item replace entity @s weapon with minecraft:diamond_sword");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
+                    tracing::info!("Spawn equipment complete");
                 });
 
                 // Start the guard background loop
