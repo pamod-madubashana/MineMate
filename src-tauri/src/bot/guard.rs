@@ -90,7 +90,8 @@ pub fn start_guard_loop(
             }
 
             // --- Follow master ---
-            if let Some(name) = master.read().clone() {
+            let master_name = master.read().clone();
+            if let Some(name) = master_name {
                 if let Some(pos) = get_player_position(&bot, &name).await {
                     bot.start_goto(RadiusGoal {
                         pos,
