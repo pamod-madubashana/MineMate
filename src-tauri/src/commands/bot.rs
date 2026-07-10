@@ -1,6 +1,5 @@
 use std::net::ToSocketAddrs;
 
-use azalea::player::GameProfileComponent;
 use azalea::prelude::*;
 use azalea::protocol::address::{ResolvedAddr, ServerAddr};
 
@@ -28,36 +27,38 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                 let master = b.master.clone();
                 crate::bot::guard::start_guard_loop(guard_bot, guard_flag, master);
 
-                // Default: find nearest player and follow them
+                // Default: find the first online player (via tab list) and follow them
                 let follow_bot = bot.clone();
                 let client = b.clone();
                 tokio::task::spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    let players = match follow_bot.nearby_players() {
-                        Ok(p) => p,
-                        Err(e) => {
-                            tracing::error!("Failed to get nearby players: {}", e);
+                    let bot_name = follow_bot.username();
+                    for attempt in 1..=6 {
+                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                        let tab = match follow_bot.tab_list() {
+                            Ok(t) => t,
+                            Err(e) => {
+                                tracing::warn!("tab_list attempt {} failed: {}", attempt, e);
+                                continue;
+                            }
+                        };
+                        let target = tab
+                            .values()
+                            .find(|info| info.profile.name != bot_name && !info.profile.name.is_empty())
+                            .cloned();
+                        if let Some(info) = target {
+                            let name = info.profile.name;
+                            tracing::info!("Default follow attempt {}: following {}", attempt, name);
+                            client.set_master(Some(name.clone()));
+                            client.set_guarding(true);
+                            client.follow_stop.store(false, std::sync::atomic::Ordering::Relaxed);
+                            client.set_following(Some(name.clone()));
+                            crate::bot::follow::start_following(follow_bot.clone(), name, client.follow_stop.clone());
+                            follow_bot.chat("I will protect you!");
                             return;
                         }
-                    };
-                    let nearest = players.first().cloned();
-                    if let Some(player) = nearest {
-                        let name = match player
-                            .component::<GameProfileComponent>()
-                            .ok()
-                            .map(|g| g.0.name.clone())
-                        {
-                            Some(n) if !n.is_empty() => n,
-                            _ => return,
-                        };
-                        tracing::info!("Default follow: nearest player is {}", name);
-                        client.set_master(Some(name.clone()));
-                        client.set_guarding(true);
-                        client.follow_stop.store(false, std::sync::atomic::Ordering::Relaxed);
-                        client.set_following(Some(name.clone()));
-                        crate::bot::follow::start_following(follow_bot.clone(), name, client.follow_stop.clone());
-                        follow_bot.chat("I will protect you!");
+                        tracing::debug!("default follow: no other player in tab list (attempt {})", attempt);
                     }
+                    tracing::warn!("Default follow: no players found after 30s");
                 });
             }
         }
