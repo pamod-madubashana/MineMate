@@ -27,6 +27,12 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                     tracing::info!("Equipping bot with starter items");
                     equip_bot.chat("/give @s minecraft:diamond_sword 1");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/enchant @s minecraft:unbreaking 3");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/enchant @s minecraft:fire_aspect 2");
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    equip_bot.chat("/enchant @s minecraft:sweeping_edge 2");
                 });
 
                 // Start the guard background loop
