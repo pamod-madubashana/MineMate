@@ -14,7 +14,7 @@ const GUARD_RADIUS: f64 = 25.0;
 const ATTACK_RANGE: f64 = 4.0;
 
 /// How close to get before attacking (pursuit distance).
-const PURSUIT_DISTANCE: f64 = 3.5;
+const PURSUIT_DISTANCE: f32 = 3.5;
 
 /// Start the guard loop. Runs a background task that:
 ///
@@ -137,7 +137,7 @@ pub fn start_guard_loop(
                     if distance_sq <= ATTACK_RANGE * ATTACK_RANGE {
                         let _ = target.look_at();
                         target.attack();
-                    } else if distance_sq <= PURSUIT_DISTANCE * PURSUIT_DISTANCE {
+                    } else if distance_sq <= PURSUIT_DISTANCE as f64 * PURSUIT_DISTANCE as f64 {
                         // Close enough — look at and attack
                         let _ = target.look_at();
                         target.attack();
