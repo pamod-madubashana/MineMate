@@ -7,11 +7,15 @@ use azalea::ecs::query::With;
 use azalea::Client;
 
 /// Start the guard loop. Runs a background task that periodically attacks
-/// nearby entities while guarding is enabled and stays near the master.
+/// nearby hostile entities while guarding is enabled.
+///
+/// Movement (follow / stay-near-master) is handled by the follow loop —
+/// this loop only attacks. This avoids conflicting pathfinder goals
+/// between guard and follow loops.
 pub fn start_guard_loop(
     bot: Client,
     guarding_flag: Arc<AtomicBool>,
-    master: Arc<parking_lot::RwLock<Option<String>>>,
+    _master: Arc<parking_lot::RwLock<Option<String>>>,
 ) {
     tokio::task::spawn(async move {
         loop {
@@ -24,21 +28,6 @@ pub fn start_guard_loop(
             if let Ok(Some(target)) = bot.nearest_entity_by::<(), With<AbstractMonster>>(|_| true) {
                 let _ = target.look_at();
                 target.attack();
-            }
-
-            // Stay near master if set
-            if let Some(master_name) = master.read().as_ref().cloned() {
-                let uuid = bot.player_uuid_by_username(&master_name).ok().flatten();
-                if let Some(uuid) = uuid {
-                    if let Some(entity) = bot.entity_by_uuid(uuid) {
-                        if let Ok(pos) = entity.position() {
-                            bot.start_goto(azalea::pathfinder::goals::RadiusGoal {
-                                pos,
-                                radius: 3.0,
-                            });
-                        }
-                    }
-                }
             }
 
             tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
