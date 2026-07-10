@@ -43,8 +43,8 @@ pub fn start_guard_loop(
                 continue;
             }
 
-            // --- Ensure equipment every 5 seconds ---
-            if last_equip_time.elapsed().as_secs() >= 5 {
+            // --- Ensure equipment every 30 seconds ---
+            if last_equip_time.elapsed().as_secs() >= 30 {
                 ensure_equipment(&bot).await;
                 last_equip_time = std::time::Instant::now();
             }
@@ -181,52 +181,12 @@ async fn get_bot_health(bot: &Client) -> Option<f32> {
     Some(health.0)
 }
 
-/// Check if a slot contains an item matching a name pattern.
-fn slot_has_item(slot: &azalea::inventory::ItemStack, pattern: &str) -> bool {
-    if slot.is_empty() {
-        return false;
-    }
-    let name = format!("{:?}", slot.kind());
-    name.contains(pattern)
-}
-
 /// Ensure the bot always has:
-/// - Diamond sword in main hand (slot 0)
-/// - Totem of undying in off-hand (slot 40)
+/// - Diamond sword in main hand
+/// - Totem of undying in off-hand
+/// Simply re-equips every call. Safe because /item replace is idempotent.
 async fn ensure_equipment(bot: &Client) {
-    let menu = match bot.menu() {
-        Ok(m) => m,
-        Err(_) => return,
-    };
-    let slots = menu.slots();
-
-    // Check off-hand (slot 40) — must have totem
-    let offhand_ok = slots.get(40).map_or(false, |s| slot_has_item(s, "TotemOfUndying"));
-
-    if !offhand_ok {
-        let has_totem = slots.iter().take(36).any(|s| slot_has_item(s, "TotemOfUndying"));
-
-        if has_totem {
-            bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
-        } else {
-            bot.chat("/give @s minecraft:totem_of_undying 1");
-            tokio::time::sleep(std::time::Duration::from_millis(600)).await;
-            bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
-        }
-    }
-
-    // Ensure sword is in main hand (slot 0)
-    let mainhand_ok = slots.get(0).map_or(false, |s| slot_has_item(s, "DiamondSword"));
-
-    if !mainhand_ok {
-        let has_sword = slots.iter().take(36).any(|s| slot_has_item(s, "DiamondSword"));
-
-        if has_sword {
-            bot.chat("/item replace entity @s weapon with minecraft:diamond_sword");
-        } else {
-            bot.chat("/give @s minecraft:diamond_sword 1");
-            tokio::time::sleep(std::time::Duration::from_millis(600)).await;
-            bot.chat("/item replace entity @s weapon with minecraft:diamond_sword");
-        }
-    }
+    bot.chat("/item replace entity @s weapon with minecraft:diamond_sword");
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
 }
