@@ -1,4 +1,10 @@
+use std::collections::VecDeque;
+use std::sync::Mutex;
+
+use azalea::ecs::query::{With, Without};
+use azalea::entity::metadata::Player;
 use azalea::Client;
+use once_cell::sync::Lazy;
 
 use crate::ai::client::NimClient;
 use crate::ai::context::AiContextBuilder;
@@ -7,8 +13,20 @@ use crate::bot::handler::BOT_CLIENT;
 use crate::config::AppConfig;
 use crate::executor::actions::run_tool_call;
 
+static RECENT_CHAT: Lazy<Mutex<VecDeque<String>>> =
+    Lazy::new(|| Mutex::new(VecDeque::with_capacity(20)));
+
 /// Process a player chat message through NIM with tool support.
 pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
+    // Store in recent chat ring buffer
+    {
+        let mut chat = RECENT_CHAT.lock().unwrap();
+        if chat.len() >= 20 {
+            chat.pop_front();
+        }
+        chat.push_back(format!("<{}> {}", sender, message));
+    }
+
     let config = match AppConfig::load() {
         Ok(c) => c,
         Err(e) => {
@@ -37,7 +55,55 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
         .map(|c| c.get_status())
         .unwrap_or_default();
 
+    // Gather nearby player names
+    let nearby_players: Vec<String> = bot
+        .nearest_entities::<(With<Player>, Without<azalea::entity::LocalEntity>)>()
+        .ok()
+        .map(|entities| {
+            entities
+                .iter()
+                .filter_map(|e| {
+                    let name = e
+                        .get_component::<azalea::player::GameProfileComponent>()?;
+                    Some(name.name.clone())
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // Gather inventory items (first 36 slots = hotbar + main inventory)
+    let inventory: Vec<String> = bot
+        .get_inventory()
+        .ok()
+        .and_then(|inv| inv.slots())
+        .map(|stacks| {
+            stacks
+                .iter()
+                .take(36)
+                .filter(|s| !s.is_empty())
+                .map(|s| {
+                    let item_name = format!("{:?}", s.kind());
+                    let count = s.count();
+                    if count > 1 {
+                        format!("{}x{}", item_name, count)
+                    } else {
+                        item_name
+                    }
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // Get recent chat
+    let recent_chat: Vec<String> = {
+        let chat = RECENT_CHAT.lock().unwrap();
+        chat.iter().cloned().collect()
+    };
+
     let messages = AiContextBuilder::new(bot_status)
+        .with_inventory(inventory)
+        .with_nearby_players(nearby_players)
+        .with_recent_chat(recent_chat)
         .with_sender(sender.to_string())
         .with_player_message(message.to_string())
         .build_messages();
