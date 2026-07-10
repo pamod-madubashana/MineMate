@@ -226,7 +226,7 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
             azalea.chat(&format!("/give {} {} {}", player, item, count));
             Ok(Some(format!("Giving {} {} to {}", count, item, player)))
         }
-        ToolAction::Mine { block, count } => {
+        ToolAction::Mine { block, count: _ } => {
             let block_kind: BlockKind = match block.parse() {
                 Ok(k) => k,
                 Err(_) => {

@@ -2,7 +2,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use azalea::entity::metadata::AbstractMonster;
-use azalea::pathfinder::PathfinderClientExt;
 use azalea::ecs::query::With;
 use azalea::Client;
 

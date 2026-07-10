@@ -147,46 +147,45 @@ pub async fn start_bot(server: String, username: String, app_handle: tauri::AppH
     let address = server.clone();
     let uname = username.clone();
 
-    // Spawn Azalea connection in a blocking task since it runs Bevy ECS
-    tokio::task::spawn_blocking(move || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async move {
-            tracing::info!("Connecting to {} as {}", address, uname);
+    // Azalea's start() uses tokio::task::LocalSet internally (not Send),
+    // so it must run on a LocalSet via run_until — not tokio::spawn.
+    let local = tokio::task::LocalSet::new();
+    local.run_until(async move {
+        tracing::info!("Connecting to {} as {}", address, uname);
 
-            let account = Account::offline(&uname);
+        let account = Account::offline(&uname);
 
-            // Pre-resolve to IPv4 — Azalea's built-in hickory-resolver picks
-            // the first DNS result, which can be an unreachable NAT64 IPv6
-            // address on some networks (e.g. Aternos servers).
-            let resolved = match resolve_ipv4(&address) {
-                Ok(r) => r,
-                Err(e) => {
-                    tracing::error!("Failed to resolve {} to IPv4: {}", address, e);
-                    if let Some(b) = BOT_CLIENT.read().as_ref() {
-                        b.set_connected(false);
-                        let _ = b.event_tx.send(BotEvent::Disconnected {
-                            reason: format!("DNS resolution failed: {}", e),
-                        });
-                    }
-                    return;
+        // Pre-resolve to IPv4 — Azalea's built-in hickory-resolver picks
+        // the first DNS result, which can be an unreachable NAT64 IPv6
+        // address on some networks (e.g. Aternos servers).
+        let resolved = match resolve_ipv4(&address) {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("Failed to resolve {} to IPv4: {}", address, e);
+                if let Some(b) = BOT_CLIENT.read().as_ref() {
+                    b.set_connected(false);
+                    let _ = b.event_tx.send(BotEvent::Disconnected {
+                        reason: format!("DNS resolution failed: {}", e),
+                    });
                 }
-            };
-
-            let exit = ClientBuilder::new()
-                .set_handler(azalea_handler)
-                .start(account, &resolved)
-                .await;
-
-            tracing::info!("Bot exited with: {:?}", exit);
-
-            if let Some(b) = BOT_CLIENT.read().as_ref() {
-                b.azalea_client.write().take();
-                b.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
-                b.set_connected(false);
-                b.emit_event(BotEvent::BotStopped);
+                return;
             }
-        });
-    });
+        };
+
+        let exit = ClientBuilder::new()
+            .set_handler(azalea_handler)
+            .start(account, &resolved)
+            .await;
+
+        tracing::info!("Bot exited with: {:?}", exit);
+
+        if let Some(b) = BOT_CLIENT.read().as_ref() {
+            b.azalea_client.write().take();
+            b.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
+            b.set_connected(false);
+            b.emit_event(BotEvent::BotStopped);
+        }
+    }).await;
 
     Ok(())
  }
