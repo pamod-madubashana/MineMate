@@ -195,7 +195,7 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
                     Ok(Some("Attacking nearest hostile".to_string()))
                 }
                 Ok(None) => {
-                    azalea.chat("[MineMate] No hostile entities nearby");
+                    azalea.chat("No hostile entities nearby");
                     Ok(Some("No hostile entities nearby".to_string()))
                 }
                 Err(e) => {
@@ -231,7 +231,7 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
                 Ok(k) => k,
                 Err(_) => {
                     let msg = format!("Unknown block type '{}'", block);
-                    azalea.chat(&format!("[MineMate] {}", msg));
+                    azalea.chat(&format!("{}", msg));
                     return Ok(Some(msg));
                 }
             };
@@ -241,7 +241,7 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
                 Ok(p) => p,
                 Err(e) => {
                     let msg = format!("Can't get position: {}", e);
-                    azalea.chat(&format!("[MineMate] {}", msg));
+                    azalea.chat(&format!("{}", msg));
                     return Ok(Some(msg));
                 }
             };

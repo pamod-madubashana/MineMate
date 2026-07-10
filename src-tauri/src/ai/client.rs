@@ -40,8 +40,11 @@ pub struct ChatCompletion {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Usage {
+    #[serde(default)]
     pub prompt_token_count: u32,
+    #[serde(default)]
     pub candidates_token_count: u32,
+    #[serde(default)]
     pub total_token_count: u32,
 }
 

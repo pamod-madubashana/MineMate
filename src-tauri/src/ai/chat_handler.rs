@@ -38,7 +38,7 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
     };
 
     if config.ai.api_key.is_empty() {
-        bot.chat("[MineMate] No API key configured — go to Config panel and set one.");
+        bot.chat("No API key configured — go to Config panel and set one.");
         return;
     }
 
@@ -115,7 +115,7 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
         Err(e) => {
             let err = format!("AI API error: {}", e);
             tracing::error!("{}", err);
-            bot.chat(&format!("[MineMate] {}", err));
+            bot.chat(&format!("{}", err));
             return;
         }
     };
