@@ -30,27 +30,19 @@ pub fn start_guard_loop(
     tokio::task::spawn(async move {
         let mut last_master_health: Option<f32> = None;
         let mut last_bot_health: Option<f32> = None;
-        let mut last_equip_time = std::time::Instant::now();
-        let mut current_target: Option<String> = None;
+        let mut last_totem_time = std::time::Instant::now();
 
         loop {
             if !guarding_flag.load(Ordering::Relaxed) {
                 last_master_health = None;
                 last_bot_health = None;
-                current_target = None;
                 bot.stop_pathfinding();
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 continue;
             }
 
-            // --- Ensure equipment every 30 seconds ---
-            if last_equip_time.elapsed().as_secs() >= 30 {
-                ensure_equipment(&bot).await;
-                last_equip_time = std::time::Instant::now();
-            }
-
             // --- Detect damage to master ---
-            let (master_health_dropped, master_took_damage) = {
+            let master_health_dropped = {
                 let name = master.read().clone();
                 match name {
                     Some(name) => {
@@ -58,16 +50,16 @@ pub fn start_guard_loop(
                         let dropped = matches!((last_master_health, health),
                             (Some(prev), Some(curr)) if curr < prev);
                         last_master_health = health;
-                        (dropped, dropped)
+                        dropped
                     }
                     None => {
                         last_master_health = None;
-                        (false, false)
+                        false
                     }
                 }
             };
 
-            // --- Detect damage to bot ---
+            // --- Detect damage to bot (totem consumed) ---
             let bot_health_dropped = {
                 let health = get_bot_health(&bot).await;
                 let dropped = matches!((last_bot_health, health),
@@ -77,6 +69,12 @@ pub fn start_guard_loop(
             };
 
             let any_health_dropped = master_health_dropped || bot_health_dropped;
+
+            // --- Re-equip totem after it's consumed (health dropped) with cooldown ---
+            if bot_health_dropped && last_totem_time.elapsed().as_secs() >= 10 {
+                ensure_totem_equipped(&bot).await;
+                last_totem_time = std::time::Instant::now();
+            }
 
             // --- Find nearest hostile entity ---
             let nearest_hostile = bot
@@ -104,20 +102,11 @@ pub fn start_guard_loop(
                 let in_attack_range = distance_sq <= ATTACK_RANGE * ATTACK_RANGE;
                 let in_guard_radius = distance_sq <= GUARD_RADIUS * GUARD_RADIUS;
 
-                // Attack if:
-                // 1. Enemy is in melee range (always attack)
-                // 2. Enemy is in guard radius AND we or master took damage
-                // 3. We have a current target (pursue until dead or out of range)
                 if in_attack_range {
                     should_attack = true;
                 } else if in_guard_radius && any_health_dropped {
                     should_attack = true;
-                } else if current_target.is_some() && in_guard_radius {
-                    should_attack = true;
                 }
-            } else {
-                // No hostile nearby — clear target
-                current_target = None;
             }
 
             // --- Execute attack behavior ---
@@ -133,16 +122,11 @@ pub fn start_guard_loop(
                         _ => f64::MAX,
                     };
 
-                    // If in range, attack
                     if distance_sq <= ATTACK_RANGE * ATTACK_RANGE {
                         let _ = target.look_at();
                         target.attack();
-                    } else if distance_sq <= PURSUIT_DISTANCE as f64 * PURSUIT_DISTANCE as f64 {
-                        // Close enough — look at and attack
-                        let _ = target.look_at();
-                        target.attack();
                     } else {
-                        // Too far — move closer (pursue)
+                        // Pursue enemy
                         if let Some(target_pos) = attack_target_pos {
                             bot.start_goto(RadiusGoal {
                                 pos: target_pos,
@@ -151,16 +135,7 @@ pub fn start_guard_loop(
                         }
                     }
                 }
-            } else {
-                // No attack — stop pathfinding if we were pursuing
-                if current_target.is_some() {
-                    bot.stop_pathfinding();
-                    current_target = None;
-                }
             }
-
-            // Track current target
-            current_target = nearest_hostile.as_ref().map(|_| "hostile".to_string());
 
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
@@ -181,12 +156,10 @@ async fn get_bot_health(bot: &Client) -> Option<f32> {
     Some(health.0)
 }
 
-/// Ensure the bot always has:
-/// - Diamond sword in main hand
-/// - Totem of undying in off-hand
-/// Simply re-equips every call. Safe because /item replace is idempotent.
-async fn ensure_equipment(bot: &Client) {
-    bot.chat("/item replace entity @s weapon with minecraft:diamond_sword");
-    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+/// Ensure a totem of undying is in the bot's off-hand.
+/// Called only when health drops (totem consumed).
+async fn ensure_totem_equipped(bot: &Client) {
+    bot.chat("/give @s minecraft:totem_of_undying 1");
+    tokio::time::sleep(std::time::Duration::from_millis(600)).await;
     bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
 }
