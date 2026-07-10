@@ -1,6 +1,6 @@
 use azalea::Client;
 
-use crate::ai::client::{ChatMessage, NimClient};
+use crate::ai::client::NimClient;
 use crate::ai::context::AiContextBuilder;
 use crate::ai::tools::available_tools;
 use crate::bot::handler::BOT_CLIENT;
@@ -46,38 +46,43 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
 
     let tools = available_tools();
 
-    match nim.chat(&messages, Some(&tools)).await {
-        Ok(response) => {
-            if let Some(choice) = response.choices.first() {
-                // Handle tool calls
-                if let Some(tool_calls) = &choice.message.tool_calls {
-                    for tool_call in tool_calls {
-                        tracing::info!("AI requested tool: {}", tool_call.function.name);
-                        match run_tool_call(tool_call).await {
-                            Ok(Some(reply)) => {
-                                bot.chat(&reply);
-                            }
-                            Ok(None) => {}
-                            Err(e) => {
-                                bot.chat(&format!("Sorry, I couldn't do that: {}", e));
-                            }
-                        }
-                    }
-                    return;
-                }
+    // Extract response or error as a Send-friendly type before any .await
+    let response = match nim.chat(&messages, Some(&tools)).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("AI chat error: {}", e);
+            return;
+        }
+    };
 
-                // Fall back to text reply
-                if let Some(content) = &choice.message.content {
-                    let reply = content.trim();
-                    if !reply.is_empty() {
-                        bot.chat(reply);
-                        tracing::info!("AI replied to {}: {}", sender, reply);
-                    }
+    let choice = match response.choices.first() {
+        Some(c) => c,
+        None => return,
+    };
+
+    // Handle tool calls
+    if let Some(tool_calls) = &choice.message.tool_calls {
+        for tool_call in tool_calls {
+            tracing::info!("AI requested tool: {}", tool_call.function.name);
+            match run_tool_call(tool_call).await {
+                Ok(Some(reply)) => {
+                    bot.chat(&reply);
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    bot.chat(&format!("Sorry, I couldn't do that: {}", e));
                 }
             }
         }
-        Err(e) => {
-            tracing::error!("AI chat error: {}", e);
+        return;
+    }
+
+    // Fall back to text reply
+    if let Some(content) = &choice.message.content {
+        let reply = content.trim();
+        if !reply.is_empty() {
+            bot.chat(reply);
+            tracing::info!("AI replied to {}: {}", sender, reply);
         }
     }
 }

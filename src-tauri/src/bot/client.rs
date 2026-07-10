@@ -79,10 +79,11 @@ impl BotClient {
     }
 
     pub fn set_master(&self, master: Option<String>) {
+        let m = master.clone();
         *self.master.write() = master;
         {
             let mut status = self.status.write();
-            status.master = master;
+            status.master = m;
         }
     }
 

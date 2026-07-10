@@ -1,3 +1,4 @@
+use azalea::pathfinder::PathfinderClientExt;
 use azalea::Client;
 
 use crate::ai::client::ToolCall;
@@ -169,7 +170,7 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
 
     match action {
         ToolAction::MoveTo { x, y, z } => {
-            let pos = glam::f64::DVec3::new(*x as f64, *y as f64, *z as f64);
+            let pos = azalea::Vec3::new(*x as f64, *y as f64, *z as f64);
             azalea.start_goto(azalea::pathfinder::goals::RadiusGoal { pos, radius: 1.0 });
             Ok(Some(format!("Moving to ({}, {}, {})", x, y, z)))
         }
@@ -226,8 +227,7 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
             Ok(Some(format!("Build {} - not implemented", structure)))
         }
         ToolAction::ScanArea { radius } => {
-            let pos = azalea.entity.borrow().position();
-            azalea.chat(&format!("Scanning area radius {} around ({:.0}, {:.0}, {:.0})", radius, pos.x, pos.y, pos.z));
+            azalea.chat(&format!("Scanning area with radius {}", radius));
             Ok(Some(format!("Scanned area radius {}", radius)))
         }
         ToolAction::SortChests => {
