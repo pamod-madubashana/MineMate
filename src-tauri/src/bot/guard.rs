@@ -30,8 +30,8 @@ pub fn start_guard_loop(
 
             // --- Retaliation: if master took damage, attack nearest hostile ---
             let master_health_dropped = {
-                let master_name = master.read().clone();
-                match master_name {
+                let name = master.read().clone();
+                match name {
                     Some(name) => {
                         let health = get_player_health(&bot, &name).await;
                         match (last_master_health, health) {
@@ -44,8 +44,11 @@ pub fn start_guard_loop(
             };
 
             // Update tracked health for next iteration
-            if let Some(name) = master.read().clone() {
-                last_master_health = get_player_health(&bot, &name).await;
+            {
+                let name = master.read().clone();
+                if let Some(name) = name {
+                    last_master_health = get_player_health(&bot, &name).await;
+                }
             }
 
             // --- Proactive: attack nearest hostile if in range (existing behavior) ---
