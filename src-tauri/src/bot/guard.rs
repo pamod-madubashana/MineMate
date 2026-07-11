@@ -192,13 +192,17 @@ pub fn start_guard_loop(
                             });
                         } else {
                             // Master standing still — wander randomly nearby
-                            let bot_pos = bot.position().unwrap_or_default();
-                            let dx = (rand::random::<f32>() - 0.5) * 2.0 * IDLE_WANDER_RANGE;
-                            let dz = (rand::random::<f32>() - 0.5) * 2.0 * IDLE_WANDER_RANGE;
+                            let now_millis = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_millis();
+                            let seed = now_millis as f64;
+                            let dx = ((seed * 0.123).sin() * 2.0 - 1.0) * IDLE_WANDER_RANGE as f64;
+                            let dz = ((seed * 0.456).cos() * 2.0 - 1.0) * IDLE_WANDER_RANGE as f64;
                             let wander_pos = azalea::Vec3::new(
-                                pos.x + dx as f64,
+                                pos.x + dx,
                                 pos.y,
-                                pos.z + dz as f64,
+                                pos.z + dz,
                             );
                             bot.start_goto(RadiusGoal {
                                 pos: wander_pos,
