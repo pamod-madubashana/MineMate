@@ -25,24 +25,24 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                 let equip_bot = bot.clone();
                 tokio::task::spawn(async move {
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    tracing::info!("Spawn equipment: clearing hands");
-                    equip_bot.chat("/item replace entity @s weapon with minecraft:air");
-                    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
-                    equip_bot.chat("/item replace entity @s weapon.offhand with minecraft:air");
-                    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+                    tracing::info!("Spawn equipment: giving items");
+                    equip_bot.chat("/give @s minecraft:diamond_sword 1");
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-                    tracing::info!("Spawn equipment: equipping sword and totem");
+                    tracing::info!("Spawn equipment: equipping sword in main hand");
                     equip_bot.chat("/item replace entity @s weapon with minecraft:diamond_sword");
-                    tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+                    tracing::info!("Spawn equipment: equipping totem in offhand");
                     equip_bot.chat("/item replace entity @s weapon.offhand with minecraft:totem_of_undying");
-                    tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
                     tracing::info!("Spawn equipment: enchanting sword");
                     equip_bot.chat("/enchant @s minecraft:unbreaking 3");
-                    tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
                     equip_bot.chat("/enchant @s minecraft:fire_aspect 2");
-                    tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
                     equip_bot.chat("/enchant @s minecraft:sweeping_edge 2");
                     tracing::info!("Spawn equipment: done");
