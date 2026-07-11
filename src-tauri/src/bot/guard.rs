@@ -14,6 +14,12 @@ const FOLLOW_RADIUS: f32 = 10.0;
 /// Long enough to chase down and kill the enemy.
 const COMBAT_DURATION: u64 = 30;
 
+/// How far the master must move before we consider them "moving".
+const MASTER_MOVE_THRESHOLD: f64 = 1.5;
+
+/// Random idle movement range around the master when standing still.
+const IDLE_WANDER_RANGE: f32 = 3.0;
+
 /// Start the guard loop. Runs a background task that:
 ///
 /// 1. Continuously follows the master player.
@@ -32,6 +38,7 @@ pub fn start_guard_loop(
         let mut last_totem_time = std::time::Instant::now();
         let mut last_master_totem_time = std::time::Instant::now();
         let mut combat_until: Option<std::time::Instant> = None;
+        let mut last_master_position: Option<azalea::Vec3> = None;
 
         loop {
             if !guarding_flag.load(Ordering::Relaxed) {
@@ -165,10 +172,39 @@ pub fn start_guard_loop(
                 let master_name = master.read().clone();
                 if let Some(name) = master_name {
                     if let Some(pos) = get_player_position(&bot, &name).await {
-                        bot.start_goto(RadiusGoal {
-                            pos,
-                            radius: FOLLOW_RADIUS,
-                        });
+                        // Check if master has moved
+                        let master_moved = match last_master_position {
+                            Some(last) => {
+                                let dx = pos.x - last.x;
+                                let dy = pos.y - last.y;
+                                let dz = pos.z - last.z;
+                                (dx * dx + dy * dy + dz * dz) > MASTER_MOVE_THRESHOLD * MASTER_MOVE_THRESHOLD
+                            }
+                            None => true,
+                        };
+
+                        if master_moved {
+                            // Master moved — follow directly
+                            last_master_position = Some(pos);
+                            bot.start_goto(RadiusGoal {
+                                pos,
+                                radius: FOLLOW_RADIUS,
+                            });
+                        } else {
+                            // Master standing still — wander randomly nearby
+                            let bot_pos = bot.position().unwrap_or_default();
+                            let dx = (rand::random::<f32>() - 0.5) * 2.0 * IDLE_WANDER_RANGE;
+                            let dz = (rand::random::<f32>() - 0.5) * 2.0 * IDLE_WANDER_RANGE;
+                            let wander_pos = azalea::Vec3::new(
+                                pos.x + dx as f64,
+                                pos.y,
+                                pos.z + dz as f64,
+                            );
+                            bot.start_goto(RadiusGoal {
+                                pos: wander_pos,
+                                radius: 1.0,
+                            });
+                        }
                     }
                 }
             }
