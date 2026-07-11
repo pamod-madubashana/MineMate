@@ -54,6 +54,9 @@ pub fn start_guard_loop(
                         let prev = last_master_health;
                         let dropped = matches!((prev, health),
                             (Some(p), Some(c)) if c < p);
+                        if dropped {
+                            tracing::info!("Master took damage: {:.1} -> {:.1}", prev.unwrap_or(0.0), health.unwrap_or(0.0));
+                        }
 
                         // Detect master totem consumed (health was low, now increased)
                         if let (Some(prev_hp), Some(curr_hp)) = (prev, health) {
@@ -83,6 +86,9 @@ pub fn start_guard_loop(
                 let prev = last_bot_health;
                 let dropped = matches!((prev, health),
                     (Some(p), Some(c)) if c < p);
+                if dropped {
+                    tracing::info!("Bot took damage: {:.1} -> {:.1}", prev.unwrap_or(0.0), health.unwrap_or(0.0));
+                }
                 last_bot_health = health;
                 (dropped, prev)
             };
@@ -136,10 +142,12 @@ pub fn start_guard_loop(
 
                         if dist_sq <= 4.0 * 4.0 {
                             // In melee range — attack
+                            tracing::debug!("Attacking enemy at distance {:.1}", dist_sq.sqrt());
                             let _ = target.look_at();
                             target.attack();
                         } else {
                             // Chase the enemy (any distance)
+                            tracing::debug!("Chasing enemy at distance {:.1}", dist_sq.sqrt());
                             bot.start_goto(RadiusGoal {
                                 pos: target_pos,
                                 radius: 2.0,
@@ -148,6 +156,7 @@ pub fn start_guard_loop(
                     }
                 } else {
                     // No enemy found, end combat early
+                    tracing::debug!("No hostiles found, ending combat");
                     combat_until = None;
                     bot.stop_pathfinding();
                 }
