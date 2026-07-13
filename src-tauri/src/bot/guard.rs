@@ -7,6 +7,8 @@ use azalea::pathfinder::goals::RadiusGoal;
 use azalea::pathfinder::PathfinderClientExt;
 use azalea::Client;
 
+use super::pathfinding;
+
 /// Follow distance — how close to stay to the master.
 const FOLLOW_RADIUS: f32 = 10.0;
 
@@ -155,10 +157,14 @@ pub fn start_guard_loop(
                         } else {
                             // Chase the enemy (any distance)
                             tracing::debug!("Chasing enemy at distance {:.1}", dist_sq.sqrt());
-                            bot.start_goto(RadiusGoal {
-                                pos: target_pos,
-                                radius: 2.0,
-                            });
+                            pathfinding::open_nearby_doors(&bot, 3).await;
+                            bot.start_goto_with_opts(
+                                RadiusGoal {
+                                    pos: target_pos,
+                                    radius: 2.0,
+                                },
+                                pathfinding::smart_pathfinder_opts(),
+                            );
                         }
                     }
                 } else {
@@ -186,10 +192,14 @@ pub fn start_guard_loop(
                         if master_moved {
                             // Master moved — follow directly
                             last_master_position = Some(pos);
-                            bot.start_goto(RadiusGoal {
-                                pos,
-                                radius: FOLLOW_RADIUS,
-                            });
+                            pathfinding::open_nearby_doors(&bot, 3).await;
+                            bot.start_goto_with_opts(
+                                RadiusGoal {
+                                    pos,
+                                    radius: FOLLOW_RADIUS,
+                                },
+                                pathfinding::smart_pathfinder_opts(),
+                            );
                         } else {
                             // Master standing still — wander randomly nearby
                             let now_millis = std::time::SystemTime::now()
@@ -204,10 +214,13 @@ pub fn start_guard_loop(
                                 pos.y,
                                 pos.z + dz,
                             );
-                            bot.start_goto(RadiusGoal {
-                                pos: wander_pos,
-                                radius: 1.0,
-                            });
+                            bot.start_goto_with_opts(
+                                RadiusGoal {
+                                    pos: wander_pos,
+                                    radius: 1.0,
+                                },
+                                pathfinding::smart_pathfinder_opts(),
+                            );
                         }
                     }
                 }

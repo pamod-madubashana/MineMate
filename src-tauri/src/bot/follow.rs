@@ -5,6 +5,8 @@ use azalea::pathfinder::goals::RadiusGoal;
 use azalea::pathfinder::PathfinderClientExt;
 use azalea::Client;
 
+use super::pathfinding;
+
 /// Start following a player by name. Runs a background loop that periodically
 /// updates the pathfinder target. Returns immediately.
 pub fn start_following(bot: Client, player_name: String, should_stop: Arc<AtomicBool>) {
@@ -37,10 +39,14 @@ pub fn start_following(bot: Client, player_name: String, should_stop: Arc<Atomic
 
             if should_repath {
                 last_target = Some(target_pos);
-                bot.start_goto(RadiusGoal {
-                    pos: target_pos,
-                    radius: 5.0,
-                });
+                pathfinding::open_nearby_doors(&bot, 3).await;
+                bot.start_goto_with_opts(
+                    RadiusGoal {
+                        pos: target_pos,
+                        radius: 5.0,
+                    },
+                    pathfinding::smart_pathfinder_opts(),
+                );
             }
 
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
