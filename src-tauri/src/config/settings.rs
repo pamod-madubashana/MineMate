@@ -58,10 +58,19 @@ pub struct PathfindingConfig {
     pub allow_placing: bool,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandsConfig {
     pub enabled: bool,
     pub prefix: String,
+}
+
+impl Default for CommandsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            prefix: "!".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
