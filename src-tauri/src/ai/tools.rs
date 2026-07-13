@@ -207,5 +207,48 @@ pub fn available_tools() -> Vec<Value> {
                 }
             }
         }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "load_blueprint",
+                "description": "Load a blueprint from file",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": { "type": "string", "description": "Path to blueprint file" }
+                    },
+                    "required": ["path"]
+                }
+            }
+        }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "check_materials",
+                "description": "Check if we have materials for a blueprint",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "blueprint": { "type": "string", "description": "Blueprint name or path" }
+                    },
+                    "required": ["blueprint"]
+                }
+            }
+        }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "import_url",
+                "description": "Import a blueprint from a URL (e.g., GrabCraft)",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "url": { "type": "string", "description": "URL to import from" },
+                        "name": { "type": "string", "description": "Name for the blueprint" }
+                    },
+                    "required": ["url", "name"]
+                }
+            }
+        }),
     ]
 }

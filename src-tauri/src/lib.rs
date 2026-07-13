@@ -1,5 +1,7 @@
 mod ai;
+mod blueprint;
 mod bot;
+mod builder;
 mod commands;
 mod config;
 mod executor;
