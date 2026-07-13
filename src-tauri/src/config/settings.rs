@@ -6,6 +6,8 @@ pub struct AppConfig {
     pub bot: BotConfig,
     pub ai: AiConfig,
     pub automation: AutomationConfig,
+    pub pathfinding: PathfindingConfig,
+    pub commands: CommandsConfig,
     pub starter_kit: Vec<KitItem>,
 }
 
@@ -47,6 +49,19 @@ pub struct AutomationConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PathfindingConfig {
+    pub smart_doors: bool,
+    pub allow_mining: bool,
+    pub allow_placing: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandsConfig {
+    pub enabled: bool,
+    pub prefix: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KitItem {
     pub item: String,
     pub count: u32,
@@ -77,6 +92,15 @@ impl Default for AppConfig {
                 auto_reconnect: true,
                 welcome_messages: true,
                 starter_kit_on_respawn: true,
+            },
+            pathfinding: PathfindingConfig {
+                smart_doors: true,
+                allow_mining: false,
+                allow_placing: true,
+            },
+            commands: CommandsConfig {
+                enabled: true,
+                prefix: "!".to_string(),
             },
             starter_kit: vec![
                 KitItem {
