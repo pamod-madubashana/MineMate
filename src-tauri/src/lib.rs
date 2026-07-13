@@ -4,6 +4,7 @@ mod commands;
 mod config;
 mod executor;
 mod memory;
+mod task_engine;
 
 pub fn run() {
     let _ = tracing_subscriber::fmt().try_init();
