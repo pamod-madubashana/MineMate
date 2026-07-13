@@ -55,3 +55,4 @@ minecraft-helper-bot/
 database/
 *.db
 *.db-journal
+.mimocode/
