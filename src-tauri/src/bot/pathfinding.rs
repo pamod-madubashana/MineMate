@@ -105,7 +105,7 @@ pub async fn open_nearby_doors(bot: &Client, radius: i32) {
                         origin.z + dz,
                     );
                     if let Some(state) = w.get_block_state(pos) {
-                        if door_states.contains(state) {
+                        if door_states.contains(&state) {
                             doors_found.push(pos);
                         }
                     }

@@ -1,5 +1,6 @@
+use azalea::pathfinder::PathfinderClientExt;
+
 use crate::bot::handler::BOT_CLIENT;
-use crate::config::AppConfig;
 
 #[derive(Debug, Clone)]
 pub enum Command {
