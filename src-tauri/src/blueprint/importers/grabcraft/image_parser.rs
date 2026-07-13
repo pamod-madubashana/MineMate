@@ -5,7 +5,7 @@ use super::legend::GrabCraftLegend;
 pub fn parse_layer_image(
     image_data: &[u8],
     legend: &GrabCraftLegend,
-    layer_y: u32,
+    _layer_y: u32,
 ) -> Result<Vec<Vec<Option<String>>>, String> {
     let img = image::load(Cursor::new(image_data), image::ImageFormat::Png)
         .or_else(|_| image::load(Cursor::new(image_data), image::ImageFormat::Jpeg))

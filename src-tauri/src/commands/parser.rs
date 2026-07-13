@@ -51,7 +51,7 @@ pub fn parse_command(message: &str, prefix: &str) -> Option<Command> {
         }
         "come" => Some(Command::Come),
         "where" | "pos" => Some(Command::Where),
-        "blueprints" | "bp" => Some(Command::Blueprints),
+        "bps" | "bp" => Some(Command::Blueprints),
         "build" => {
             if args.get(1).map(|s| *s == "blueprint").unwrap_or(false) {
                 let index = args.get(2)?.parse().ok()?;
@@ -180,7 +180,7 @@ pub async fn execute_command(sender: &str, command: Command) -> Option<String> {
             Some(
                 "Commands: !follow <player>, !stop, !mine <block> <count>, \
                  !move <x> <y> <z>, !guard <player>, !come, !where, \
-                 !blueprints, !build blueprint <n>, !import <url>, !help"
+                 !bps, !build blueprint <n>, !import <url>, !help"
                     .to_string(),
             )
         }

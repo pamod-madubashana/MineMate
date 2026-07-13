@@ -4,8 +4,6 @@ pub mod html_parser;
 pub mod image_parser;
 pub mod legend;
 
-use std::path::PathBuf;
-
 use crate::blueprint::types::Blueprint;
 
 use self::cache::BlueprintCache;
@@ -90,11 +88,14 @@ impl GrabCraftImporter {
     }
 
     fn extract_name(&self, url: &str) -> String {
-        url.split('/')
-            .last()
-            .unwrap_or("unknown")
+        url.split('#')
+            .next()
+            .unwrap_or(url)
             .split('?')
             .next()
+            .unwrap_or("unknown")
+            .split('/')
+            .last()
             .unwrap_or("unknown")
             .to_string()
     }

@@ -348,8 +348,7 @@ pub async fn get_audit_logs(count: u32) -> Result<Vec<serde_json::Value>, String
 pub async fn follow_player(player: String) -> Result<(), String> {
     tracing::info!("Follow player: {}", player);
 
-    let bot = BOT_CLIENT.read();
-    let client = bot.as_ref().ok_or_else(|| "Bot not started".to_string())?;
+    let _bot = BOT_CLIENT.read();
 
     let task = crate::task_engine::Task::Follow { player: player.clone() };
     tokio::task::spawn(async move {

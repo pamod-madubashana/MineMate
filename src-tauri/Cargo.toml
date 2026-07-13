@@ -34,6 +34,8 @@ once_cell = "1"
 async-trait = "0.1"
 image = "0.25"
 scraper = "0.20"
+fastnbt = "2"
+flate2 = "1"
 
 # Debug-mode builds run azalea's ECS systems 10-100x slower unoptimized,
 # which causes the 60 Hz schedule loop to exceed its 16.6 ms budget,

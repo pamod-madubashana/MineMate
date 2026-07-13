@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use azalea::pathfinder::PathfinderClientExt;
-use parking_lot::RwLock;
 use tokio::sync::broadcast;
 
 use super::queue::{SharedTaskQueue, new_shared_queue};
@@ -118,7 +115,7 @@ pub async fn execute_task(task: &Task) -> Option<TaskResult> {
             match crate::blueprint::BlueprintLoader::load_from_file(blueprint_path) {
                 Ok(bp) => {
                     let origin = (*origin_x, *origin_y, *origin_z);
-                    let mut build_executor = crate::builder::BuildExecutor::new(
+                    let build_executor = crate::builder::BuildExecutor::new(
                         azalea.clone(),
                         bp,
                         origin,

@@ -2,6 +2,7 @@ use std::path::Path;
 use super::types::{Blueprint, BlockPlacement};
 use super::parser::parse_blueprint;
 use super::importers::GrabCraftImporter;
+use super::formats::{litematic, schem, schematic, nbt_structure};
 
 pub struct BlueprintLoader;
 
@@ -24,11 +25,25 @@ impl BlueprintLoader {
                     .map_err(|e| format!("Failed to read file: {}", e))?;
                 parse_mcfunction(&content, path)
             }
-            "litematic" | "schem" | "schematic" | "nbt" => {
-                Err(format!(
-                    "Format '.{}' requires NBT parsing. Use GrabCraft URL import instead, or convert to .json first.",
-                    ext
-                ))
+            "litematic" => {
+                let data = std::fs::read(path)
+                    .map_err(|e| format!("Failed to read file: {}", e))?;
+                litematic::parse_litematic(&data)
+            }
+            "schem" => {
+                let data = std::fs::read(path)
+                    .map_err(|e| format!("Failed to read file: {}", e))?;
+                schem::parse_schem(&data)
+            }
+            "schematic" => {
+                let data = std::fs::read(path)
+                    .map_err(|e| format!("Failed to read file: {}", e))?;
+                schematic::parse_schematic(&data)
+            }
+            "nbt" | "mcstructure" => {
+                let data = std::fs::read(path)
+                    .map_err(|e| format!("Failed to read file: {}", e))?;
+                nbt_structure::parse_nbt_structure(&data)
             }
             _ => Err(format!("Unsupported file format: .{}", ext)),
         }

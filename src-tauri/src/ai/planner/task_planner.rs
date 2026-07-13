@@ -94,7 +94,7 @@ pub fn tool_call_to_task(tool_call: &ToolCall) -> Result<Option<Task>, String> {
 
 pub fn validate_task(task: &Task) -> Result<(), String> {
     match task {
-        Task::MoveTo { x, y, z } => {
+        Task::MoveTo { x: _, y, z: _ } => {
             if *y < -64 || *y > 320 {
                 return Err(format!("Y coordinate {} is out of range (-64 to 320)", y));
             }
