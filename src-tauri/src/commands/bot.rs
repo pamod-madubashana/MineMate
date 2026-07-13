@@ -343,11 +343,11 @@ pub async fn follow_player(player: String) -> Result<(), String> {
 
     let bot = BOT_CLIENT.read();
     let client = bot.as_ref().ok_or_else(|| "Bot not started".to_string())?;
-    let azalea = client.azalea_client.read();
-    let azalea = azalea.as_ref().ok_or_else(|| "Bot not yet connected".to_string())?;
 
-    client.follow_stop.store(false, std::sync::atomic::Ordering::Relaxed);
-    crate::bot::follow::start_following(azalea.clone(), player.clone(), client.follow_stop.clone());
+    let task = crate::task_engine::Task::Follow { player: player.clone() };
+    tokio::task::spawn(async move {
+        crate::task_engine::execute_task(&task).await;
+    });
 
     get_audit_logger().log_success("follow_player", Some(&player), "Started following");
     Ok(())
@@ -357,13 +357,10 @@ pub async fn follow_player(player: String) -> Result<(), String> {
 pub async fn stop_following() -> Result<(), String> {
     tracing::info!("Stop following");
 
-    let bot = BOT_CLIENT.read();
-    if let Some(client) = bot.as_ref() {
-        client.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
-        if let Some(azalea) = client.azalea_client.read().as_ref() {
-            azalea.stop_pathfinding();
-        }
-    }
+    let task = crate::task_engine::Task::Stop;
+    tokio::task::spawn(async move {
+        crate::task_engine::execute_task(&task).await;
+    });
 
     get_audit_logger().log_success("stop_following", None, "Stopped following");
     Ok(())
