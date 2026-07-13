@@ -8,11 +8,12 @@ use once_cell::sync::Lazy;
 
 use crate::ai::client::NimClient;
 use crate::ai::context::AiContextBuilder;
+use crate::ai::planner::{tool_call_to_task, validate_task};
 use crate::ai::tools::available_tools;
 use crate::bot::handler::BOT_CLIENT;
 use crate::commands::parser::{parse_command, execute_command};
 use crate::config::AppConfig;
-use crate::executor::actions::run_tool_call;
+use crate::task_engine::execute_task;
 
 static RECENT_CHAT: Lazy<Mutex<VecDeque<String>>> =
     Lazy::new(|| Mutex::new(VecDeque::with_capacity(20)));
@@ -137,18 +138,36 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
         }
     };
 
-    // Handle tool calls
+    // Handle tool calls - route through task_engine
     if let Some(tool_calls) = &response.tool_calls {
         for tool_call in tool_calls {
             tracing::info!("AI requested tool: {}", tool_call.name);
-            match run_tool_call(tool_call).await {
-                Ok(Some(reply)) => {
-                    bot.chat(&reply);
-                }
-                Ok(None) => {}
+
+            // Convert tool call to Task
+            let task = match tool_call_to_task(tool_call) {
+                Ok(t) => t,
                 Err(e) => {
-                    bot.chat(&format!("Sorry, I couldn't do that: {}", e));
+                    bot.chat(&format!("Invalid action: {}", e));
+                    continue;
                 }
+            };
+
+            // Validate task
+            if let Err(e) = validate_task(&task) {
+                bot.chat(&format!("Invalid task: {}", e));
+                continue;
+            }
+
+            // Execute through task_engine
+            match execute_task(&task).await {
+                Some(result) => {
+                    if result.success {
+                        bot.chat(&result.message);
+                    } else {
+                        bot.chat(&format!("Failed: {}", result.message));
+                    }
+                }
+                None => {}
             }
         }
         return;
