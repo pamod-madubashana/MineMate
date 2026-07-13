@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod formats;
 pub mod importers;
 pub mod loader;

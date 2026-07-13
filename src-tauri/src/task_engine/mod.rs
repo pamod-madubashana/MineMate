@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod executor;
 pub mod queue;
 pub mod types;

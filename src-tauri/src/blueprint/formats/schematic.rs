@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::io::Read;
 use flate2::read::GzDecoder;
 use fastnbt::{Value, from_value};

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod actions;
 pub mod audit;
 pub mod automation;

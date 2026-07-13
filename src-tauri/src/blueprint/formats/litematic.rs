@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::io::Read;
 use flate2::read::GzDecoder;
@@ -90,7 +92,6 @@ pub fn parse_litematic(data: &[u8]) -> Result<Blueprint, String> {
     }).collect();
 
     let blocks_per_layer = (width * length) as usize;
-    let total_blocks = (width * height * length) as usize;
 
     let mut blocks = Vec::with_capacity(height as usize);
     let mut block_palette = BlockPalette::new();

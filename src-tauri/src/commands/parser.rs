@@ -151,7 +151,7 @@ pub async fn execute_command(sender: &str, command: Command) -> Option<String> {
                 Some(blueprint) => {
                     let pos = azalea.position().ok()?;
                     let origin = (pos.x as i32, pos.y as i32, pos.z as i32);
-                    let mut build_executor = crate::builder::BuildExecutor::new(
+                    let build_executor = crate::builder::BuildExecutor::new(
                         azalea.clone(),
                         blueprint.clone(),
                         origin,

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::io::Read;
 use flate2::read::GzDecoder;
@@ -55,7 +57,7 @@ pub fn parse_schem(data: &[u8]) -> Result<Blueprint, String> {
     let mut block_palette = BlockPalette::new();
     let mut blocks = Vec::with_capacity(height as usize);
 
-    let blocks_per_layer = (width * length) as usize;
+    let _blocks_per_layer = (width * length) as usize;
     let mut idx = 0;
 
     for _y in 0..height {
