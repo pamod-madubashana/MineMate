@@ -118,7 +118,7 @@ export default function Blueprints() {
             type="file"
             ref={fileInputRef}
             onChange={handleFileUpload}
-            accept=".json,.blueprint"
+            accept=".json,.blueprint,.mcfunction"
             className="file-input"
             id="file-upload"
           />
@@ -126,7 +126,7 @@ export default function Blueprints() {
             <span className="material-symbols-outlined">upload_file</span>
             Upload File
           </label>
-          <span className="file-hint">.json or .blueprint</span>
+          <span className="file-hint">.json, .blueprint, .mcfunction</span>
         </div>
 
         {message && (
