@@ -145,7 +145,10 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
 
             // Convert tool call to Task
             let task = match tool_call_to_task(tool_call) {
-                Ok(t) => t,
+                Ok(Some(t)) => t,
+                Ok(None) => {
+                    continue;
+                }
                 Err(e) => {
                     bot.chat(&format!("Invalid action: {}", e));
                     continue;
