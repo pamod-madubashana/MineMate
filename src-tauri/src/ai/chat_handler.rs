@@ -20,6 +20,8 @@ static RECENT_CHAT: Lazy<Mutex<VecDeque<String>>> =
 
 /// Process a player chat message through NIM with tool support.
 pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
+    tracing::info!("handle_chat called: sender={}, message={}", sender, message);
+
     // Store in recent chat ring buffer
     {
         let mut chat = RECENT_CHAT.lock().unwrap();
@@ -47,16 +49,24 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
     // Check for command mode (! prefix)
     if config.commands.enabled {
         let prefix = &config.commands.prefix;
+        tracing::info!("Checking command: prefix='{}', message='{}', enabled={}", prefix, message, config.commands.enabled);
         if let Some(command) = parse_command(message, prefix) {
             tracing::info!("Executing command from {}: {:?}", sender, command);
             match execute_command(sender, command).await {
                 Some(reply) => {
+                    tracing::info!("Command reply: {}", reply);
                     bot.chat(&reply);
                 }
-                None => {}
+                None => {
+                    tracing::info!("Command returned None");
+                }
             }
             return;
+        } else {
+            tracing::info!("No command parsed from message");
         }
+    } else {
+        tracing::info!("Commands disabled in config");
     }
 
     // Fall back to AI mode if API key is configured
