@@ -114,10 +114,44 @@ pub async fn execute_task(task: &Task) -> Option<TaskResult> {
             origin_y,
             origin_z,
         } => {
-            Some(TaskResult::success(format!(
-                "Building {} at ({}, {}, {}) - queued",
-                blueprint, origin_x, origin_y, origin_z
-            )))
+            let blueprint_path = std::path::Path::new(blueprint);
+            match crate::blueprint::BlueprintLoader::load_from_file(blueprint_path) {
+                Ok(bp) => {
+                    let origin = (*origin_x, *origin_y, *origin_z);
+                    let mut build_executor = crate::builder::BuildExecutor::new(
+                        azalea.clone(),
+                        bp,
+                        origin,
+                    );
+
+                    let materials = build_executor.check_materials();
+                    if !materials.is_complete() {
+                        let missing: Vec<String> = materials.missing.materials
+                            .iter()
+                            .map(|(k, v)| format!("{}: {}", k, v))
+                            .collect();
+                        return Some(TaskResult::failure(format!(
+                            "Missing materials: {}",
+                            missing.join(", ")
+                        )));
+                    }
+
+                    match build_executor.execute().await {
+                        Ok(placed) => Some(TaskResult::success(format!(
+                            "Built {}: {} blocks placed",
+                            blueprint, placed
+                        ))),
+                        Err(e) => Some(TaskResult::failure(format!(
+                            "Build failed: {}",
+                            e
+                        ))),
+                    }
+                }
+                Err(e) => Some(TaskResult::failure(format!(
+                    "Failed to load blueprint: {}",
+                    e
+                ))),
+            }
         }
         Task::Attack { target } => {
             Some(TaskResult::success(format!("Attacking {} - queued", target)))
