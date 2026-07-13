@@ -6,8 +6,11 @@ pub struct AppConfig {
     pub bot: BotConfig,
     pub ai: AiConfig,
     pub automation: AutomationConfig,
+    #[serde(default)]
     pub pathfinding: PathfindingConfig,
+    #[serde(default)]
     pub commands: CommandsConfig,
+    #[serde(default = "default_starter_kit")]
     pub starter_kit: Vec<KitItem>,
 }
 
@@ -48,14 +51,14 @@ pub struct AutomationConfig {
     pub starter_kit_on_respawn: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PathfindingConfig {
     pub smart_doors: bool,
     pub allow_mining: bool,
     pub allow_placing: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CommandsConfig {
     pub enabled: bool,
     pub prefix: String,
@@ -65,6 +68,15 @@ pub struct CommandsConfig {
 pub struct KitItem {
     pub item: String,
     pub count: u32,
+}
+
+fn default_starter_kit() -> Vec<KitItem> {
+    vec![
+        KitItem { item: "diamond_sword".to_string(), count: 1 },
+        KitItem { item: "diamond_pickaxe".to_string(), count: 1 },
+        KitItem { item: "diamond_axe".to_string(), count: 1 },
+        KitItem { item: "cooked_beef".to_string(), count: 64 },
+    ]
 }
 
 impl Default for AppConfig {
@@ -102,24 +114,7 @@ impl Default for AppConfig {
                 enabled: true,
                 prefix: "!".to_string(),
             },
-            starter_kit: vec![
-                KitItem {
-                    item: "diamond_sword".to_string(),
-                    count: 1,
-                },
-                KitItem {
-                    item: "diamond_pickaxe".to_string(),
-                    count: 1,
-                },
-                KitItem {
-                    item: "diamond_axe".to_string(),
-                    count: 1,
-                },
-                KitItem {
-                    item: "cooked_beef".to_string(),
-                    count: 64,
-                },
-            ],
+            starter_kit: default_starter_kit(),
         }
     }
 }
