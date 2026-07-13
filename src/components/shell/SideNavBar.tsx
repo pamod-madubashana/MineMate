@@ -5,6 +5,7 @@ const navItems = [
   { path: "/chat", label: "Logs", icon: "list_alt" },
   { path: "/config", label: "Config", icon: "settings" },
   { path: "/tasks", label: "Tasks", icon: "assignment" },
+  { path: "/blueprints", label: "Blueprints", icon: "architecture" },
 ];
 
 export default function SideNavBar() {

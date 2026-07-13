@@ -1,3 +1,4 @@
+pub mod importers;
 pub mod loader;
 pub mod materials;
 pub mod parser;
@@ -5,6 +6,7 @@ pub mod transform;
 pub mod types;
 pub mod verifier;
 
+pub use importers::GrabCraftImporter;
 pub use loader::BlueprintLoader;
 pub use materials::{MaterialList, estimate_materials};
 pub use transform::BlueprintTransform;

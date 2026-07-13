@@ -1,6 +1,7 @@
 use std::path::Path;
 use super::types::Blueprint;
 use super::parser::parse_blueprint;
+use super::importers::GrabCraftImporter;
 
 pub struct BlueprintLoader;
 
@@ -13,6 +14,15 @@ impl BlueprintLoader {
             "json" => serde_json::from_str(&content).map_err(|e| format!("Failed to parse JSON: {}", e)),
             "blueprint" => parse_blueprint(&content),
             _ => Err(format!("Unsupported file format: {}", ext)),
+        }
+    }
+
+    pub async fn load_from_url(url: &str) -> Result<Blueprint, String> {
+        if url.contains("grabcraft.com") {
+            let importer = GrabCraftImporter::new();
+            importer.import(url).await
+        } else {
+            Err(format!("Unsupported URL: {}", url))
         }
     }
 
