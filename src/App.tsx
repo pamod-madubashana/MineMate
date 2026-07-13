@@ -5,6 +5,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import ChatLog from "./components/chat/ChatLog";
 import ConfigPanel from "./components/config/ConfigPanel";
 import TaskQueue from "./components/tasks/TaskQueue";
+import Blueprints from "./components/blueprints/Blueprints";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
               <Route path="/chat" element={<ChatLog />} />
               <Route path="/config" element={<ConfigPanel />} />
               <Route path="/tasks" element={<TaskQueue />} />
+              <Route path="/blueprints" element={<Blueprints />} />
             </Routes>
           </main>
         </div>

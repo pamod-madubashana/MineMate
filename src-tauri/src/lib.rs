@@ -35,6 +35,8 @@ pub fn run() {
             commands::memory::save_blueprint,
             commands::memory::get_history,
             commands::memory::log_event,
+            commands::memory::import_blueprint,
+            commands::memory::list_cached_blueprints,
         ])
         .run(tauri::generate_context!())
         .expect("error while running MineMate");

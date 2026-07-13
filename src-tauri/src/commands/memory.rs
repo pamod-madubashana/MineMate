@@ -67,3 +67,24 @@ pub async fn log_event(
         .log_event(&event_type, player.as_deref(), &details)
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn import_blueprint(url: String, name: Option<String>) -> Result<String, String> {
+    let importer = crate::blueprint::importers::GrabCraftImporter::new();
+    let blueprint = importer.import(&url).await?;
+
+    let cache = crate::blueprint::importers::grabcraft::cache::BlueprintCache::new();
+    let save_name = name.unwrap_or_else(|| blueprint.name.clone());
+    cache.save(&save_name, &blueprint).map_err(|e| e.to_string())?;
+
+    Ok(format!(
+        "Imported '{}' ({}x{}x{})",
+        blueprint.name, blueprint.width, blueprint.height, blueprint.length
+    ))
+}
+
+#[tauri::command]
+pub async fn list_cached_blueprints() -> Result<Vec<String>, String> {
+    let cache = crate::blueprint::importers::grabcraft::cache::BlueprintCache::new();
+    Ok(cache.list())
+}
