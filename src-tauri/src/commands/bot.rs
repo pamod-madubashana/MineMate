@@ -99,6 +99,13 @@ async fn azalea_handler(bot: Client, event: Event, _state: azalea::NoState) {
                     reason: format!("{:?}", reason),
                 });
             }
+
+            {
+                let mut running = BOT_RUNNING.write();
+                *running = false;
+            }
+
+            tracing::info!("Bot stopped due to disconnect");
         }
         azalea::Event::Chat(chat) => {
             let sender = chat.sender().unwrap_or_default();
