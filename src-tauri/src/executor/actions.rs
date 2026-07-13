@@ -174,7 +174,11 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
     match action {
         ToolAction::MoveTo { x, y, z } => {
             let pos = azalea::Vec3::new(*x as f64, *y as f64, *z as f64);
-            azalea.start_goto(azalea::pathfinder::goals::RadiusGoal { pos, radius: 1.0 });
+            crate::bot::pathfinding::open_nearby_doors(&azalea, 3).await;
+            azalea.start_goto_with_opts(
+                azalea::pathfinder::goals::RadiusGoal { pos, radius: 1.0 },
+                crate::bot::pathfinding::smart_pathfinder_opts(),
+            );
             Ok(Some(format!("Moving to ({}, {}, {})", x, y, z)))
         }
         ToolAction::Follow { player } => {
