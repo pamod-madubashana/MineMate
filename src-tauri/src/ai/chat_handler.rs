@@ -10,6 +10,7 @@ use crate::ai::client::NimClient;
 use crate::ai::context::AiContextBuilder;
 use crate::ai::tools::available_tools;
 use crate::bot::handler::BOT_CLIENT;
+use crate::commands::parser::{parse_command, execute_command};
 use crate::config::AppConfig;
 use crate::executor::actions::run_tool_call;
 
@@ -37,13 +38,29 @@ pub async fn handle_chat(bot: &Client, sender: &str, message: &str) {
         }
     };
 
-    if config.ai.api_key.is_empty() {
-        bot.chat("No API key configured — go to Config panel and set one.");
+    let bot_username = bot.username();
+    if sender == bot_username {
         return;
     }
 
-    let bot_username = bot.username();
-    if sender == bot_username {
+    // Check for command mode (! prefix)
+    if config.commands.enabled {
+        let prefix = &config.commands.prefix;
+        if let Some(command) = parse_command(message, prefix) {
+            tracing::info!("Executing command from {}: {:?}", sender, command);
+            match execute_command(sender, command).await {
+                Some(reply) => {
+                    bot.chat(&reply);
+                }
+                None => {}
+            }
+            return;
+        }
+    }
+
+    // Fall back to AI mode if API key is configured
+    if config.ai.api_key.is_empty() {
+        bot.chat("No API key configured. Use !help for available commands.");
         return;
     }
 
