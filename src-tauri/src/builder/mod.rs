@@ -7,4 +7,3 @@ pub mod placement;
 pub mod scaffolding;
 
 pub use executor::BuildExecutor;
-pub use creative_manager::CreativeInventoryManager;
