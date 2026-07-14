@@ -1,8 +1,10 @@
 use azalea::Client;
 use azalea::pathfinder::PathfinderClientExt;
 use azalea::pathfinder::goals::RadiusGoal;
+use azalea::registry::builtin::ItemKind;
 use crate::blueprint::types::BlockPlacement;
 use crate::bot::pathfinding;
+use super::creative_manager::CreativeInventoryManager;
 
 const PLACE_DELAY_MS: u64 = 40;
 const REACH_DISTANCE: f64 = 4.5;
@@ -12,18 +14,30 @@ fn normalize_block_id(id: &str) -> String {
     id.trim().to_lowercase()
 }
 
+fn block_id_to_item_kind(block_id: &str) -> Result<ItemKind, String> {
+    let normalized = normalize_block_id(block_id);
+    let with_prefix = if normalized.starts_with("minecraft:") {
+        normalized.clone()
+    } else {
+        format!("minecraft:{}", normalized)
+    };
+
+    with_prefix.parse().map_err(|_| format!("Unknown block/item: {}", block_id))
+}
+
 pub struct PlayerPlacer {
     bot: Client,
-    slot_map: std::collections::HashMap<String, u8>,
-    next_slot: u8,
+    creative_manager: CreativeInventoryManager,
+    current_item: Option<String>,
 }
 
 impl PlayerPlacer {
     pub fn new(bot: Client) -> Self {
+        let creative_manager = CreativeInventoryManager::new(bot.clone());
         Self {
             bot,
-            slot_map: std::collections::HashMap::new(),
-            next_slot: 0,
+            creative_manager,
+            current_item: None,
         }
     }
 
@@ -36,34 +50,20 @@ impl PlayerPlacer {
         Ok(())
     }
 
-    async fn give_block(&mut self, block_id: &str) -> Result<u8, String> {
+    async fn ensure_item(&mut self, block_id: &str) -> Result<(), String> {
         let normalized = normalize_block_id(block_id);
 
-        if let Some(&slot) = self.slot_map.get(&normalized) {
-            return Ok(slot);
+        if self.current_item.as_deref() == Some(&normalized) {
+            return Ok(());
         }
 
-        if self.next_slot >= 9 {
-            return Err("Hotbar full (9/9)".into());
-        }
+        let item_kind = block_id_to_item_kind(block_id)?;
+        self.creative_manager.inject_item(item_kind, 1).await?;
+        self.creative_manager.select_hotbar_slot();
+        self.current_item = Some(normalized);
 
-        let slot = self.next_slot;
-        self.bot.chat(&format!("/give @s {} 1", block_id));
-        self.bot.wait_updates(3).await;
-        tokio::time::sleep(tokio::time::Duration::from_millis(400)).await;
-
-        self.slot_map.insert(normalized, slot);
-        self.next_slot += 1;
-
-        tracing::info!("Assigned {} -> hotbar slot {}", block_id, slot);
-        Ok(slot)
-    }
-
-    fn select_slot(&self, slot: u8) {
-        let current = self.bot.selected_hotbar_slot().unwrap_or(0);
-        if current != slot {
-            self.bot.set_selected_hotbar_slot(slot);
-        }
+        tracing::debug!("Injected {} into hotbar slot 0", block_id);
+        Ok(())
     }
 
     fn bot_block_pos(&self) -> Option<azalea::BlockPos> {
@@ -157,8 +157,7 @@ impl PlayerPlacer {
     pub async fn place_block(&mut self, placement: &BlockPlacement) -> Result<(), String> {
         let target = azalea::BlockPos::new(placement.x, placement.y, placement.z);
 
-        let slot = self.give_block(&placement.block_id).await?;
-        self.select_slot(slot);
+        self.ensure_item(&placement.block_id).await?;
 
         let dist = self.distance_to(&target);
         if dist > REACH_DISTANCE {
@@ -180,10 +179,10 @@ impl PlayerPlacer {
 
     pub async fn place_blocks(&mut self, placements: &[BlockPlacement]) -> Result<u32, String> {
         let mut sorted: Vec<&BlockPlacement> = placements.iter().collect();
-        sorted.sort_by_key(|p| {
-            let target = azalea::BlockPos::new(p.x, p.y, p.z);
-            let dist = self.distance_to(&target);
-            (dist * 100.0) as i64
+        sorted.sort_by(|a, b| {
+            let a_norm = normalize_block_id(&a.block_id);
+            let b_norm = normalize_block_id(&b.block_id);
+            a_norm.cmp(&b_norm)
         });
 
         let mut placed = 0;
@@ -194,9 +193,8 @@ impl PlayerPlacer {
             let normalized = normalize_block_id(&placement.block_id);
             if normalized != last_block_type {
                 tracing::info!(
-                    "[{}/{}] Placing {} at ({}, {}, {})",
-                    i + 1, sorted.len(), placement.block_id,
-                    placement.x, placement.y, placement.z
+                    "[{}/{}] Switching to {}",
+                    i + 1, sorted.len(), placement.block_id
                 );
                 last_block_type = normalized;
             }
