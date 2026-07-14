@@ -127,6 +127,15 @@ pub async fn execute_task(task: &Task) -> Option<TaskResult> {
                 bc.set_following(None);
             }
 
+            let origin = if *origin_x == 0 && *origin_y == 0 && *origin_z == 0 {
+                match azalea.position() {
+                    Ok(pos) => (pos.x as i32, pos.y as i32, pos.z as i32),
+                    Err(_) => (*origin_x, *origin_y, *origin_z),
+                }
+            } else {
+                (*origin_x, *origin_y, *origin_z)
+            };
+
             let blueprint_path = std::path::Path::new(blueprint);
             match crate::blueprint::BlueprintLoader::load_from_file(blueprint_path) {
                 Ok(bp) => {
