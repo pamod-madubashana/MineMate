@@ -1,88 +1,49 @@
 use azalea::Client;
-use azalea::inventory::ItemStack;
-use azalea::registry::builtin::ItemKind;
-use azalea::protocol::packets::game::s_set_creative_mode_slot::ServerboundSetCreativeModeSlot;
 use crate::bot::events::BotEvent;
 
-const HOTBAR_SLOT: u16 = 0;
-const INVENTORY_WAIT_TICKS: usize = 5;
-const INVENTORY_WAIT_MS: u64 = 200;
+const GIVE_WAIT_TICKS: usize = 5;
+const GIVE_WAIT_MS: u64 = 300;
 
 pub struct CreativeInventoryManager {
     bot: Client,
+    current_item: Option<String>,
 }
 
 impl CreativeInventoryManager {
     pub fn new(bot: Client) -> Self {
-        Self { bot }
+        Self { bot, current_item: None }
     }
 
-    pub async fn inject_item(&self, item_kind: ItemKind, count: i32) -> Result<(), String> {
-        let item_stack = ItemStack::new(item_kind, count);
-
-        let packet = ServerboundSetCreativeModeSlot {
-            slot_num: HOTBAR_SLOT,
-            item_stack,
+    pub async fn inject_item(&mut self, block_id: &str) -> Result<(), String> {
+        let normalized = block_id.trim().to_lowercase();
+        let with_prefix = if normalized.starts_with("minecraft:") {
+            normalized.clone()
+        } else {
+            format!("minecraft:{}", normalized)
         };
 
-        self.bot.write_packet(packet);
-        self.bot.wait_updates(INVENTORY_WAIT_TICKS).await;
-        tokio::time::sleep(tokio::time::Duration::from_millis(INVENTORY_WAIT_MS)).await;
+        self.bot.chat(&format!("/give @s {} 1", with_prefix));
+        self.bot.wait_updates(GIVE_WAIT_TICKS).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(GIVE_WAIT_MS)).await;
+
+        self.bot.chat("/item replace entity @s weapon.mainhand with " .to_string() + &with_prefix);
+        self.bot.wait_updates(GIVE_WAIT_TICKS).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(GIVE_WAIT_MS)).await;
 
         if let Some(bot_client) = crate::bot::handler::BOT_CLIENT.read().as_ref() {
             bot_client.emit_event(BotEvent::InventoryChanged);
         }
 
-        tracing::debug!(
-            "Injected {}x {} into hotbar slot {}",
-            count,
-            format!("{:?}", item_kind),
-            HOTBAR_SLOT
-        );
+        self.current_item = Some(normalized);
+        tracing::debug!("Equipped {} via /give", block_id);
         Ok(())
     }
 
-    pub async fn inject_grouped(
-        &self,
-        placements: &[(azalea::BlockPos, ItemKind)],
-    ) -> Result<u32, String> {
-        if placements.is_empty() {
-            return Ok(0);
-        }
-
-        let mut injected = 0u32;
-        let mut current_item = placements[0].1;
-        let mut current_count = 1i32;
-
-        for &(_, item_kind) in placements.iter().skip(1) {
-            if item_kind == current_item {
-                current_count += 1;
-            } else {
-                self.inject_item(current_item, current_count).await?;
-                injected += current_count as u32;
-                current_item = item_kind;
-                current_count = 1;
-            }
-        }
-
-        self.inject_item(current_item, current_count).await?;
-        injected += current_count as u32;
-
-        tracing::info!("Injected {} items in {} groups", injected, "batched");
-        Ok(injected)
+    pub fn current_item(&self) -> Option<&str> {
+        self.current_item.as_deref()
     }
 
-    pub fn select_hotbar_slot(&self) {
-        self.bot.set_selected_hotbar_slot(0);
-    }
-
-    pub fn current_slot_item(&self) -> Option<ItemKind> {
-        self.bot.get_held_item().ok().and_then(|item| {
-            if item.is_present() {
-                Some(item.kind())
-            } else {
-                None
-            }
-        })
+    pub fn reset_item_cache(&mut self) {
+        self.current_item = None;
     }
 }

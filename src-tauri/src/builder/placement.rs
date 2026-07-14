@@ -1,9 +1,8 @@
 use azalea::Client;
 use azalea::pathfinder::PathfinderClientExt;
 use azalea::pathfinder::goals::RadiusGoal;
-use azalea::registry::builtin::ItemKind;
+use azalea::pathfinder::PathfinderOpts;
 use crate::blueprint::types::BlockPlacement;
-use crate::bot::pathfinding;
 use super::creative_manager::CreativeInventoryManager;
 
 const PLACE_DELAY_MS: u64 = 50;
@@ -13,16 +12,6 @@ const MOVE_TIMEOUT_SECS: u64 = 30;
 
 fn normalize_block_id(id: &str) -> String {
     id.trim().to_lowercase()
-}
-
-fn block_id_to_item_kind(block_id: &str) -> Result<ItemKind, String> {
-    let normalized = normalize_block_id(block_id);
-    let with_prefix = if normalized.starts_with("minecraft:") {
-        normalized.clone()
-    } else {
-        format!("minecraft:{}", normalized)
-    };
-    with_prefix.parse().map_err(|_| format!("Unknown block/item: {}", block_id))
 }
 
 pub struct PlayerPlacer {
@@ -37,13 +26,14 @@ impl PlayerPlacer {
         Self { bot, creative_manager, current_item: None }
     }
 
-    pub async fn ensure_creative(&mut self) -> Result<(), String> {
-        tracing::info!("Switching to creative mode...");
-        self.bot.chat("/gamemode creative @s");
-        self.bot.wait_updates(10).await;
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+    pub async fn prepare_for_building(&mut self) -> Result<(), String> {
+        tracing::info!("Preparing bot for building...");
+        self.bot.chat("/item replace entity @s weapon.mainhand with minecraft:air");
+        self.bot.wait_updates(3).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         self.current_item = None;
-        tracing::info!("Creative mode confirmed");
+        self.creative_manager.reset_item_cache();
+        tracing::info!("Hand cleared, ready to build");
         Ok(())
     }
 
@@ -53,9 +43,7 @@ impl PlayerPlacer {
             return Ok(());
         }
 
-        let item_kind = block_id_to_item_kind(block_id)?;
-        self.creative_manager.inject_item(item_kind, 1).await?;
-        self.creative_manager.select_hotbar_slot();
+        self.creative_manager.inject_item(&normalized).await?;
         self.current_item = Some(normalized);
         tracing::debug!("Equipped {}", block_id);
         Ok(())
@@ -106,9 +94,10 @@ impl PlayerPlacer {
             target.z as f64 + 0.5,
         );
 
+        let opts = PathfinderOpts::new().allow_mining(true);
         self.bot.start_goto_with_opts(
             RadiusGoal { pos: goal_pos, radius: 2.0 },
-            pathfinding::smart_pathfinder_opts(),
+            opts,
         );
 
         let start = tokio::time::Instant::now();
@@ -142,7 +131,7 @@ impl PlayerPlacer {
                 tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
                 self.bot.start_goto_with_opts(
                     RadiusGoal { pos: goal_pos, radius: 2.0 },
-                    pathfinding::smart_pathfinder_opts(),
+                    PathfinderOpts::new().allow_mining(true),
                 );
                 last_progress = tokio::time::Instant::now();
             }

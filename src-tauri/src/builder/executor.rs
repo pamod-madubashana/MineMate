@@ -28,7 +28,7 @@ impl BuildExecutor {
         }
 
         let mut placer = PlayerPlacer::new(self.bot.clone());
-        placer.ensure_creative().await?;
+        placer.prepare_for_building().await?;
 
         let total_placed;
 
@@ -40,9 +40,7 @@ impl BuildExecutor {
             }
         }
 
-        self.bot.chat("/gamemode survival @s");
-        self.bot.wait_updates(3).await;
-        tracing::info!("Build complete: {}/{} blocks placed, back to survival", total_placed, plan.total_blocks);
+        tracing::info!("Build complete: {}/{} blocks placed", total_placed, plan.total_blocks);
         Ok(total_placed)
     }
 }
