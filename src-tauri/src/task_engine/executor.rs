@@ -99,11 +99,20 @@ pub async fn execute_task(task: &Task) -> Option<TaskResult> {
             )))
         }
         Task::Place { block, x, y, z } => {
-            azalea.chat(&format!("/setblock {} {} {} {}", x, y, z, block));
-            Some(TaskResult::success(format!(
-                "Placing {} at ({}, {}, {})",
-                block, x, y, z
-            )))
+            let placement = crate::blueprint::types::BlockPlacement::new(
+                *x, *y, *z, block.clone(),
+            );
+            let mut placer = crate::builder::placement::PlayerPlacer::new(azalea.clone());
+            match placer.place_block(&placement).await {
+                Ok(()) => Some(TaskResult::success(format!(
+                    "Placed {} at ({}, {}, {})",
+                    block, x, y, z
+                ))),
+                Err(e) => Some(TaskResult::failure(format!(
+                    "Failed to place {}: {}",
+                    block, e
+                ))),
+            }
         }
         Task::Build {
             blueprint,
@@ -111,6 +120,13 @@ pub async fn execute_task(task: &Task) -> Option<TaskResult> {
             origin_y,
             origin_z,
         } => {
+            azalea.stop_pathfinding();
+            if let Some(bc) = crate::bot::handler::BOT_CLIENT.read().as_ref() {
+                bc.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
+                bc.set_guarding(false);
+                bc.set_following(None);
+            }
+
             let blueprint_path = std::path::Path::new(blueprint);
             match crate::blueprint::BlueprintLoader::load_from_file(blueprint_path) {
                 Ok(bp) => {
@@ -120,18 +136,6 @@ pub async fn execute_task(task: &Task) -> Option<TaskResult> {
                         bp,
                         origin,
                     );
-
-                    let materials = build_executor.check_materials();
-                    if !materials.is_complete() {
-                        let missing: Vec<String> = materials.missing.materials
-                            .iter()
-                            .map(|(k, v)| format!("{}: {}", k, v))
-                            .collect();
-                        return Some(TaskResult::failure(format!(
-                            "Missing materials: {}",
-                            missing.join(", ")
-                        )));
-                    }
 
                     match build_executor.execute().await {
                         Ok(placed) => Some(TaskResult::success(format!(

@@ -27,6 +27,7 @@ impl BuildPlan {
 
 pub fn plan_build(blueprint: &Blueprint, origin: (i32, i32, i32)) -> BuildPlan {
     let mut plan = BuildPlan::new(origin);
+
     for (y, layer) in blueprint.blocks.iter().enumerate() {
         for (z, row) in layer.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {

@@ -298,8 +298,14 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
             Ok(Some(format!("Crafting {} {}", count, item)))
         }
         ToolAction::PlaceBlock { block, x, y, z } => {
-            azalea.chat(&format!("/setblock {} {} {} {}", x, y, z, block));
-            Ok(Some(format!("Placed {} at ({}, {}, {})", block, x, y, z)))
+            let placement = crate::blueprint::types::BlockPlacement::new(
+                *x, *y, *z, block.clone(),
+            );
+            let mut placer = crate::builder::placement::PlayerPlacer::new(azalea.clone());
+            match placer.place_block(&placement).await {
+                Ok(()) => Ok(Some(format!("Placed {} at ({}, {}, {})", block, x, y, z))),
+                Err(e) => Ok(Some(format!("Failed to place {}: {}", block, e))),
+            }
         }
         ToolAction::BuildStructure { structure } => {
             azalea.chat(&format!("Building {} is not yet implemented", structure));

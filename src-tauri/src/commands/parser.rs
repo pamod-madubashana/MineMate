@@ -76,8 +76,14 @@ pub async fn execute_command(sender: &str, command: Command) -> Option<String> {
 
     match command {
         Command::Follow { player } => {
+            azalea.stop_pathfinding();
+            bot_client.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
+            bot_client.set_guarding(false);
+
             bot_client.follow_stop.store(false, std::sync::atomic::Ordering::Relaxed);
             bot_client.set_following(Some(player.clone()));
+            bot_client.set_master(Some(player.clone()));
+            bot_client.set_guarding(true);
             crate::bot::follow::start_following(
                 azalea.clone(),
                 player.clone(),
@@ -147,6 +153,14 @@ pub async fn execute_command(sender: &str, command: Command) -> Option<String> {
                 return Some(format!("Invalid index. Use 1-{}", list.len()));
             }
             let name = &list[index - 1];
+
+            azalea.stop_pathfinding();
+            if let Some(bot_client) = crate::bot::handler::BOT_CLIENT.read().as_ref() {
+                bot_client.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
+                bot_client.set_guarding(false);
+                bot_client.set_following(None);
+            }
+
             match cache.get(name) {
                 Some(blueprint) => {
                     let pos = azalea.position().ok()?;
