@@ -18,6 +18,23 @@ impl BuildExecutor {
         let plan = plan_build(&self.blueprint, self.origin);
         tracing::info!("Starting build: {} blocks, {} layers", plan.total_blocks, plan.layers);
 
+        let bot_pos = self.bot.position().map_err(|e| format!("No position: {}", e))?;
+        let dist = (
+            (bot_pos.x - self.origin.0 as f64).powi(2) +
+            (bot_pos.y - self.origin.1 as f64).powi(2) +
+            (bot_pos.z - self.origin.2 as f64).powi(2)
+        ).sqrt();
+
+        if dist > 10.0 {
+            tracing::info!("Teleporting to build origin ({}, {}, {})", self.origin.0, self.origin.1, self.origin.2);
+            self.bot.chat(&format!(
+                "/tp {} {} {}",
+                self.origin.0, self.origin.1, self.origin.2
+            ));
+            self.bot.wait_updates(10).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        }
+
         let mut placer = PlayerPlacer::new(self.bot.clone());
         placer.ensure_creative().await?;
 
