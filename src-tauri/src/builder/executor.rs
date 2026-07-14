@@ -18,6 +18,14 @@ impl BuildExecutor {
         let plan = plan_build(&self.blueprint, self.origin);
         tracing::info!("Starting build: {} blocks, {} layers", plan.total_blocks, plan.layers);
 
+        self.bot.stop_pathfinding();
+        if let Some(bc) = crate::bot::handler::BOT_CLIENT.read().as_ref() {
+            bc.follow_stop.store(true, std::sync::atomic::Ordering::Relaxed);
+            bc.set_guarding(false);
+            bc.set_following(None);
+            bc.set_master(None);
+        }
+
         let bot_pos = self.bot.position().map_err(|e| format!("No position: {}", e))?;
         let dist = (
             (bot_pos.x - self.origin.0 as f64).powi(2) +
