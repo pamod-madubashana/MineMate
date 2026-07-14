@@ -8,7 +8,8 @@ use super::creative_manager::CreativeInventoryManager;
 
 const PLACE_DELAY_MS: u64 = 40;
 const REACH_DISTANCE: f64 = 4.5;
-const WALK_TIMEOUT_SECS: u64 = 30;
+const WALK_TIMEOUT_SECS: u64 = 60;
+const PATHFIND_RADIUS: f64 = 2.0;
 
 fn normalize_block_id(id: &str) -> String {
     id.trim().to_lowercase()
@@ -127,11 +128,14 @@ impl PlayerPlacer {
         );
 
         self.bot.start_goto_with_opts(
-            RadiusGoal { pos, radius: 1.0 },
+            RadiusGoal { pos, radius: PATHFIND_RADIUS },
             pathfinding::smart_pathfinder_opts(),
         );
 
         let start = tokio::time::Instant::now();
+        let mut last_progress = tokio::time::Instant::now();
+        let mut last_pos = self.bot.position().map_err(|e| format!("No pos: {}", e))?;
+
         loop {
             if start.elapsed() > tokio::time::Duration::from_secs(WALK_TIMEOUT_SECS) {
                 tracing::warn!("Walk timeout after {}s, skipping", WALK_TIMEOUT_SECS);
@@ -146,6 +150,26 @@ impl PlayerPlacer {
 
             if dist <= REACH_DISTANCE {
                 break;
+            }
+
+            let moved = (
+                (bot_pos.x - last_pos.x).powi(2) +
+                (bot_pos.y - last_pos.y).powi(2) +
+                (bot_pos.z - last_pos.z).powi(2)
+            ).sqrt();
+
+            if moved > 0.1 {
+                last_progress = tokio::time::Instant::now();
+                last_pos = bot_pos;
+            } else if last_progress.elapsed() > tokio::time::Duration::from_secs(5) {
+                tracing::warn!("No progress for 5s, retrying pathfind");
+                self.bot.stop_pathfinding();
+                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                self.bot.start_goto_with_opts(
+                    RadiusGoal { pos, radius: PATHFIND_RADIUS },
+                    pathfinding::smart_pathfinder_opts(),
+                );
+                last_progress = tokio::time::Instant::now();
             }
 
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
