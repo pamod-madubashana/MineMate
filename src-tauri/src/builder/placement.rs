@@ -8,9 +8,8 @@ use super::creative_manager::CreativeInventoryManager;
 
 const PLACE_DELAY_MS: u64 = 50;
 const REACH_DISTANCE: f64 = 4.5;
-const FLY_SPEED: f64 = 0.4;
 const FLY_TICK_MS: u64 = 50;
-const MOVE_TIMEOUT_SECS: u64 = 15;
+const MOVE_TIMEOUT_SECS: u64 = 30;
 
 fn normalize_block_id(id: &str) -> String {
     id.trim().to_lowercase()
@@ -38,12 +37,13 @@ impl PlayerPlacer {
         Self { bot, creative_manager, current_item: None }
     }
 
-    pub async fn ensure_creative(&self) -> Result<(), String> {
+    pub async fn ensure_creative(&mut self) -> Result<(), String> {
         tracing::info!("Switching to creative mode...");
         self.bot.chat("/gamemode creative @s");
-        self.bot.wait_updates(5).await;
-        tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
-        tracing::info!("Creative mode enabled");
+        self.bot.wait_updates(10).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        self.current_item = None;
+        tracing::info!("Creative mode confirmed");
         Ok(())
     }
 
@@ -52,6 +52,7 @@ impl PlayerPlacer {
         if self.current_item.as_deref() == Some(&normalized) {
             return Ok(());
         }
+
         let item_kind = block_id_to_item_kind(block_id)?;
         self.creative_manager.inject_item(item_kind, 1).await?;
         self.creative_manager.select_hotbar_slot();
@@ -99,14 +100,14 @@ impl PlayerPlacer {
     }
 
     async fn fly_towards(&self, target: &azalea::BlockPos) -> Result<(), String> {
-        let pos = azalea::Vec3::new(
+        let goal_pos = azalea::Vec3::new(
             target.x as f64 + 0.5,
             target.y as f64,
             target.z as f64 + 0.5,
         );
 
         self.bot.start_goto_with_opts(
-            RadiusGoal { pos, radius: 2.0 },
+            RadiusGoal { pos: goal_pos, radius: 2.0 },
             pathfinding::smart_pathfinder_opts(),
         );
 
@@ -116,14 +117,15 @@ impl PlayerPlacer {
 
         loop {
             if start.elapsed() > tokio::time::Duration::from_secs(MOVE_TIMEOUT_SECS) {
-                tracing::warn!("Move timeout for ({},{},{})", target.x, target.y, target.z);
+                tracing::warn!("Move timeout ({},{},{})", target.x, target.y, target.z);
+                self.bot.stop_pathfinding();
                 return Err("Move timeout".into());
             }
 
             let bot_pos = self.bot.position().map_err(|e| format!("No pos: {}", e))?;
-            let dx = bot_pos.x - (target.x as f64 + 0.5);
-            let dy = bot_pos.y - target.y as f64;
-            let dz = bot_pos.z - target.z as f64;
+            let dx = bot_pos.x - goal_pos.x;
+            let dy = bot_pos.y - goal_pos.y;
+            let dz = bot_pos.z - goal_pos.z;
             let dist = (dx*dx + dy*dy + dz*dz).sqrt();
 
             if dist <= REACH_DISTANCE {
@@ -134,12 +136,12 @@ impl PlayerPlacer {
             if moved > 0.1 {
                 last_progress = tokio::time::Instant::now();
                 last_pos = bot_pos;
-            } else if last_progress.elapsed() > tokio::time::Duration::from_secs(5) {
-                tracing::warn!("Stuck, retrying pathfind");
+            } else if last_progress.elapsed() > tokio::time::Duration::from_secs(8) {
+                tracing::warn!("Stuck, restarting pathfind");
                 self.bot.stop_pathfinding();
-                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
                 self.bot.start_goto_with_opts(
-                    RadiusGoal { pos, radius: 2.0 },
+                    RadiusGoal { pos: goal_pos, radius: 2.0 },
                     pathfinding::smart_pathfinder_opts(),
                 );
                 last_progress = tokio::time::Instant::now();
@@ -174,7 +176,7 @@ impl PlayerPlacer {
         }
 
         if !self.is_air_block(&target) {
-            tracing::debug!("Breaking block at ({},{},{})", target.x, target.y, target.z);
+            tracing::debug!("Breaking at ({},{},{})", target.x, target.y, target.z);
             self.break_block_at(&target).await?;
         }
 

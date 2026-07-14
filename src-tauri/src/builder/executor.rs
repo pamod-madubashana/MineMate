@@ -27,45 +27,16 @@ impl BuildExecutor {
             bc.set_master(None);
         }
 
-        let bot_pos = self.bot.position().map_err(|e| format!("No position: {}", e))?;
-
-        if let Some(first) = plan.placements.first() {
-            let first_target = azalea::BlockPos::new(first.x, first.y, first.z);
-            let dist = (
-                (bot_pos.x - first_target.x as f64).powi(2) +
-                (bot_pos.y - first_target.y as f64).powi(2) +
-                (bot_pos.z - first_target.z as f64).powi(2)
-            ).sqrt();
-
-            if dist > 20.0 {
-                tracing::info!("Teleporting to build area ({}, {}, {})", first.x, first.y, first.z);
-                self.bot.chat(&format!("/tp {} {} {}", first.x, first.y, first.z));
-                self.bot.wait_updates(20).await;
-                tracing::info!("Waiting for chunks to load...");
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-            }
-        }
-
         let mut placer = PlayerPlacer::new(self.bot.clone());
         placer.ensure_creative().await?;
 
-        let mut total_placed = 0;
-        let mut current_y = i32::MIN;
+        let total_placed;
 
-        for chunk in plan.placements.chunks(100) {
-            if let Some(first) = chunk.first() {
-                if first.y != current_y {
-                    current_y = first.y;
-                    tracing::info!("Building layer y={}", current_y);
-                }
-            }
-
-            match placer.place_blocks(chunk).await {
-                Ok(placed) => { total_placed += placed; }
-                Err(e) => {
-                    tracing::error!("Build error: {}", e);
-                    return Err(e);
-                }
+        match placer.place_blocks(&plan.placements).await {
+            Ok(placed) => { total_placed = placed; }
+            Err(e) => {
+                tracing::error!("Build error: {}", e);
+                return Err(e);
             }
         }
 

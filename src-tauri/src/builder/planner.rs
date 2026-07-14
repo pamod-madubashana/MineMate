@@ -45,6 +45,5 @@ pub fn plan_build(blueprint: &Blueprint, origin: (i32, i32, i32)) -> BuildPlan {
         }
     }
     plan.layers = plan.get_layer_count() as u32;
-    plan.sort_bottom_up();
     plan
 }
