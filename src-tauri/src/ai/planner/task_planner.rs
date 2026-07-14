@@ -30,11 +30,14 @@ pub fn tool_call_to_task(tool_call: &ToolCall) -> Result<Option<Task>, String> {
         }
         "build_structure" => {
             let structure = args["structure"].as_str().ok_or("Missing structure")?.to_string();
+            let origin_x = args["x"].as_i64().map(|v| v as i32).unwrap_or(0);
+            let origin_y = args["y"].as_i64().map(|v| v as i32).unwrap_or(0);
+            let origin_z = args["z"].as_i64().map(|v| v as i32).unwrap_or(0);
             Ok(Some(Task::Build {
                 blueprint: structure,
-                origin_x: 0,
-                origin_y: 0,
-                origin_z: 0,
+                origin_x,
+                origin_y,
+                origin_z,
             }))
         }
         "attack" => Ok(Some(Task::Attack {

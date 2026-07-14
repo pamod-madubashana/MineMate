@@ -97,11 +97,14 @@ pub fn available_tools() -> Vec<Value> {
             "type": "function",
             "function": {
                 "name": "build_structure",
-                "description": "Build a structure from a blueprint",
+                "description": "Build a structure from a blueprint at specified position. Origin defaults to current position if not specified.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "structure": { "type": "string", "description": "Blueprint name to build" }
+                        "structure": { "type": "string", "description": "Blueprint name or file path to build" },
+                        "x": { "type": "integer", "description": "X coordinate for build origin (optional, defaults to current position)" },
+                        "y": { "type": "integer", "description": "Y coordinate for build origin (optional, defaults to current position)" },
+                        "z": { "type": "integer", "description": "Z coordinate for build origin (optional, defaults to current position)" }
                     },
                     "required": ["structure"]
                 }

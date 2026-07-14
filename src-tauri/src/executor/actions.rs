@@ -82,9 +82,15 @@ impl ToolExecutor {
             }
             "build_structure" => {
                 let structure = args["structure"].as_str().unwrap_or("").to_string();
+                let x = args["x"].as_i64().map(|v| v as i32);
+                let y = args["y"].as_i64().map(|v| v as i32);
+                let z = args["z"].as_i64().map(|v| v as i32);
                 Ok(ToolResult {
                     action: ToolAction::BuildStructure {
                         structure: structure.clone(),
+                        x,
+                        y,
+                        z,
                     },
                     message: format!("Building {}", structure),
                 })
@@ -307,9 +313,34 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
                 Err(e) => Ok(Some(format!("Failed to place {}: {}", block, e))),
             }
         }
-        ToolAction::BuildStructure { structure } => {
-            azalea.chat(&format!("Building {} is not yet implemented", structure));
-            Ok(Some(format!("Build {} - not implemented", structure)))
+        ToolAction::BuildStructure { structure, x, y, z } => {
+            let origin = match (x, y, z) {
+                (Some(ox), Some(oy), Some(oz)) => (ox, oy, oz),
+                _ => {
+                    let pos = azalea.position().map_err(|e| format!("No position: {}", e))?;
+                    (pos.x as i32, pos.y as i32, pos.z as i32)
+                }
+            };
+
+            let blueprint_path = std::path::Path::new(structure);
+            match crate::blueprint::BlueprintLoader::load_from_file(blueprint_path) {
+                Ok(bp) => {
+                    let build_executor = crate::builder::BuildExecutor::new(
+                        azalea.clone(),
+                        bp,
+                        origin,
+                    );
+
+                    match build_executor.execute().await {
+                        Ok(placed) => Ok(Some(format!(
+                            "Built {}: {} blocks placed",
+                            structure, placed
+                        ))),
+                        Err(e) => Ok(Some(format!("Build failed: {}", e))),
+                    }
+                }
+                Err(e) => Ok(Some(format!("Failed to load blueprint '{}': {}", structure, e))),
+            }
         }
         ToolAction::ScanArea { radius } => {
             azalea.chat(&format!("Scanning area with radius {}", radius));
@@ -347,7 +378,7 @@ pub enum ToolAction {
     Craft { item: String, count: u32 },
     Attack,
     PlaceBlock { block: String, x: i32, y: i32, z: i32 },
-    BuildStructure { structure: String },
+    BuildStructure { structure: String, x: Option<i32>, y: Option<i32>, z: Option<i32> },
     Reply { message: String },
     ExecuteCommand { command: String },
     ScanArea { radius: u32 },
