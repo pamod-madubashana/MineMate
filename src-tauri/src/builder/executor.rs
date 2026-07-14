@@ -1,4 +1,5 @@
 use azalea::Client;
+use azalea::pathfinder::PathfinderClientExt;
 use crate::blueprint::types::Blueprint;
 use super::planner::plan_build;
 use super::placement::PlayerPlacer;
@@ -27,20 +28,24 @@ impl BuildExecutor {
         }
 
         let bot_pos = self.bot.position().map_err(|e| format!("No position: {}", e))?;
-        let dist = (
-            (bot_pos.x - self.origin.0 as f64).powi(2) +
-            (bot_pos.y - self.origin.1 as f64).powi(2) +
-            (bot_pos.z - self.origin.2 as f64).powi(2)
-        ).sqrt();
 
-        if dist > 10.0 {
-            tracing::info!("Teleporting to build origin ({}, {}, {})", self.origin.0, self.origin.1, self.origin.2);
-            self.bot.chat(&format!(
-                "/tp {} {} {}",
-                self.origin.0, self.origin.1, self.origin.2
-            ));
-            self.bot.wait_updates(10).await;
-            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        if let Some(first) = plan.placements.first() {
+            let first_target = azalea::BlockPos::new(first.x, first.y, first.z);
+            let dist = (
+                (bot_pos.x - first_target.x as f64).powi(2) +
+                (bot_pos.y - first_target.y as f64).powi(2) +
+                (bot_pos.z - first_target.z as f64).powi(2)
+            ).sqrt();
+
+            if dist > 20.0 {
+                tracing::info!("Teleporting to first block ({}, {}, {})", first.x, first.y, first.z);
+                self.bot.chat(&format!(
+                    "/tp {} {} {}",
+                    first.x, first.y, first.z
+                ));
+                self.bot.wait_updates(10).await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+            }
         }
 
         let mut placer = PlayerPlacer::new(self.bot.clone());

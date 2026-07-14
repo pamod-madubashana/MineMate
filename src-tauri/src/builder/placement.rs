@@ -8,8 +8,9 @@ use super::creative_manager::CreativeInventoryManager;
 
 const PLACE_DELAY_MS: u64 = 40;
 const REACH_DISTANCE: f64 = 4.5;
-const WALK_TIMEOUT_SECS: u64 = 60;
-const PATHFIND_RADIUS: f64 = 2.0;
+const WALK_TIMEOUT_SECS: u64 = 120;
+const PATHFIND_RADIUS: f32 = 2.0;
+const FLY_SPEED: f64 = 1.5;
 
 fn normalize_block_id(id: &str) -> String {
     id.trim().to_lowercase()
@@ -120,6 +121,91 @@ impl PlayerPlacer {
         best
     }
 
+    fn is_air_block(&self, pos: &azalea::BlockPos) -> bool {
+        let world = match self.bot.world() {
+            Ok(w) => w,
+            Err(_) => return false,
+        };
+        let w = world.read();
+        match w.get_block_state(*pos) {
+            Some(state) => state.is_air(),
+            None => true,
+        }
+    }
+
+    async fn break_block_at(&self, pos: &azalea::BlockPos) -> Result<(), String> {
+        let adj = self.find_adjacent_position(pos)
+            .ok_or("No adjacent position to break block")?;
+        self.walk_to_block(&adj).await?;
+
+        self.bot.look_at(pos.center());
+        self.bot.wait_updates(1).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        self.bot.mine(*pos).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        Ok(())
+    }
+
+    async fn fly_to_position(&self, target: &azalea::BlockPos) -> Result<(), String> {
+        let target_vec = azalea::Vec3::new(
+            target.x as f64 + 0.5,
+            target.y as f64,
+            target.z as f64 + 0.5,
+        );
+
+        let start = tokio::time::Instant::now();
+        let mut last_progress = tokio::time::Instant::now();
+        let mut last_pos = self.bot.position().map_err(|e| format!("No pos: {}", e))?;
+
+        self.bot.start_goto_with_opts(
+            RadiusGoal { pos: target_vec, radius: PATHFIND_RADIUS },
+            pathfinding::smart_pathfinder_opts(),
+        );
+
+        loop {
+            if start.elapsed() > tokio::time::Duration::from_secs(WALK_TIMEOUT_SECS) {
+                tracing::warn!("Fly timeout after {}s, skipping", WALK_TIMEOUT_SECS);
+                return Err("Fly timeout".into());
+            }
+
+            let bot_pos = self.bot.position().map_err(|e| format!("No pos: {}", e))?;
+            let dx = bot_pos.x - (target.x as f64 + 0.5);
+            let dy = bot_pos.y - target.y as f64;
+            let dz = bot_pos.z - target.z as f64;
+            let dist = (dx * dx + dy * dy + dz * dz).sqrt();
+
+            if dist <= REACH_DISTANCE {
+                break;
+            }
+
+            let moved = (
+                (bot_pos.x - last_pos.x).powi(2) +
+                (bot_pos.y - last_pos.y).powi(2) +
+                (bot_pos.z - last_pos.z).powi(2)
+            ).sqrt();
+
+            if moved > 0.1 {
+                last_progress = tokio::time::Instant::now();
+                last_pos = bot_pos;
+            } else if last_progress.elapsed() > tokio::time::Duration::from_secs(10) {
+                tracing::warn!("No progress for 10s, retrying pathfind");
+                self.bot.stop_pathfinding();
+                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                self.bot.start_goto_with_opts(
+                    RadiusGoal { pos: target_vec, radius: PATHFIND_RADIUS },
+                    pathfinding::smart_pathfinder_opts(),
+                );
+                last_progress = tokio::time::Instant::now();
+            }
+
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        }
+
+        Ok(())
+    }
+
     async fn walk_to_block(&self, target: &azalea::BlockPos) -> Result<(), String> {
         let pos = azalea::Vec3::new(
             target.x as f64 + 0.5,
@@ -161,8 +247,8 @@ impl PlayerPlacer {
             if moved > 0.1 {
                 last_progress = tokio::time::Instant::now();
                 last_pos = bot_pos;
-            } else if last_progress.elapsed() > tokio::time::Duration::from_secs(5) {
-                tracing::warn!("No progress for 5s, retrying pathfind");
+            } else if last_progress.elapsed() > tokio::time::Duration::from_secs(10) {
+                tracing::warn!("No progress for 10s, retrying pathfind");
                 self.bot.stop_pathfinding();
                 tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
                 self.bot.start_goto_with_opts(
@@ -190,6 +276,11 @@ impl PlayerPlacer {
             self.walk_to_block(&adj).await?;
         }
 
+        if !self.is_air_block(&target) {
+            tracing::debug!("Breaking existing block at ({}, {}, {})", target.x, target.y, target.z);
+            self.break_block_at(&target).await?;
+        }
+
         self.bot.look_at(target.center());
         self.bot.wait_updates(1).await;
         tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
@@ -202,25 +293,27 @@ impl PlayerPlacer {
     }
 
     pub async fn place_blocks(&mut self, placements: &[BlockPlacement]) -> Result<u32, String> {
+        let bot_pos = self.bot.position().map_err(|e| format!("No pos: {}", e))?;
+        let bot_block = azalea::BlockPos::new(
+            bot_pos.x as i32, bot_pos.y as i32, bot_pos.z as i32,
+        );
+
         let mut sorted: Vec<&BlockPlacement> = placements.iter().collect();
         sorted.sort_by(|a, b| {
-            let a_norm = normalize_block_id(&a.block_id);
-            let b_norm = normalize_block_id(&b.block_id);
-            a_norm.cmp(&b_norm)
+            let a_dist = ((a.x - bot_block.x).pow(2) + (a.y - bot_block.y).pow(2) + (a.z - bot_block.z).pow(2)) as f64;
+            let b_dist = ((b.x - bot_block.x).pow(2) + (b.y - bot_block.y).pow(2) + (b.z - bot_block.z).pow(2)) as f64;
+            a_dist.partial_cmp(&b_dist).unwrap_or(std::cmp::Ordering::Equal)
         });
 
         let mut placed = 0;
-        let mut last_block_type = String::new();
         let mut skipped = 0;
 
         for (i, placement) in sorted.iter().enumerate() {
-            let normalized = normalize_block_id(&placement.block_id);
-            if normalized != last_block_type {
+            if i % 50 == 0 || i == sorted.len() - 1 {
                 tracing::info!(
-                    "[{}/{}] Switching to {}",
-                    i + 1, sorted.len(), placement.block_id
+                    "[{}/{}] Placing {} blocks...",
+                    i + 1, sorted.len(), sorted.len() - i
                 );
-                last_block_type = normalized;
             }
 
             match self.place_block(placement).await {
