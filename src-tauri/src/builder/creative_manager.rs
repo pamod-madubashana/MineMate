@@ -2,6 +2,7 @@ use azalea::Client;
 use azalea::inventory::ItemStack;
 use azalea::registry::builtin::ItemKind;
 use azalea_protocol::packets::game::s_set_creative_mode_slot::ServerboundSetCreativeModeSlot;
+use crate::bot::events::BotEvent;
 
 const HOTBAR_SLOT: u16 = 0;
 const INVENTORY_WAIT_TICKS: usize = 5;
@@ -27,6 +28,10 @@ impl CreativeInventoryManager {
         self.bot.write_packet(&packet);
         self.bot.wait_updates(INVENTORY_WAIT_TICKS).await;
         tokio::time::sleep(tokio::time::Duration::from_millis(INVENTORY_WAIT_MS)).await;
+
+        if let Some(bot_client) = crate::bot::handler::BOT_CLIENT.read().as_ref() {
+            bot_client.emit_event(BotEvent::InventoryChanged);
+        }
 
         tracing::debug!(
             "Injected {}x {} into hotbar slot {}",
