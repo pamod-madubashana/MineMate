@@ -38,13 +38,11 @@ impl BuildExecutor {
             ).sqrt();
 
             if dist > 20.0 {
-                tracing::info!("Teleporting to first block ({}, {}, {})", first.x, first.y, first.z);
-                self.bot.chat(&format!(
-                    "/tp {} {} {}",
-                    first.x, first.y, first.z
-                ));
-                self.bot.wait_updates(10).await;
-                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                tracing::info!("Teleporting to build area ({}, {}, {})", first.x, first.y, first.z);
+                self.bot.chat(&format!("/tp {} {} {}", first.x, first.y, first.z));
+                self.bot.wait_updates(20).await;
+                tracing::info!("Waiting for chunks to load...");
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
             }
         }
 
