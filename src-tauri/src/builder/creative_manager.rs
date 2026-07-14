@@ -25,7 +25,7 @@ impl CreativeInventoryManager {
             item_stack,
         };
 
-        self.bot.write_packet(&packet);
+        self.bot.write_packet(packet);
         self.bot.wait_updates(INVENTORY_WAIT_TICKS).await;
         tokio::time::sleep(tokio::time::Duration::from_millis(INVENTORY_WAIT_MS)).await;
 

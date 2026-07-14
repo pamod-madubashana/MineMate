@@ -315,7 +315,7 @@ async fn execute_via_client(action: &ToolAction) -> Result<Option<String>, Strin
         }
         ToolAction::BuildStructure { structure, x, y, z } => {
             let origin = match (x, y, z) {
-                (Some(ox), Some(oy), Some(oz)) => (ox, oy, oz),
+                (Some(ox), Some(oy), Some(oz)) => (*ox, *oy, *oz),
                 _ => {
                     let pos = azalea.position().map_err(|e| format!("No position: {}", e))?;
                     (pos.x as i32, pos.y as i32, pos.z as i32)

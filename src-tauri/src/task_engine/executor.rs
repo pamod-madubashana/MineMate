@@ -139,7 +139,6 @@ pub async fn execute_task(task: &Task) -> Option<TaskResult> {
             let blueprint_path = std::path::Path::new(blueprint);
             match crate::blueprint::BlueprintLoader::load_from_file(blueprint_path) {
                 Ok(bp) => {
-                    let origin = (*origin_x, *origin_y, *origin_z);
                     let build_executor = crate::builder::BuildExecutor::new(
                         azalea.clone(),
                         bp,
