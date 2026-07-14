@@ -1,7 +1,7 @@
 use azalea::Client;
 use azalea::inventory::ItemStack;
 use azalea::registry::builtin::ItemKind;
-use azalea_protocol::packets::game::s_set_creative_mode_slot::ServerboundSetCreativeModeSlot;
+use azalea::protocol::packets::game::s_set_creative_mode_slot::ServerboundSetCreativeModeSlot;
 use crate::bot::events::BotEvent;
 
 const HOTBAR_SLOT: u16 = 0;
